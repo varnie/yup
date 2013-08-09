@@ -6,6 +6,7 @@ use warnings;
 use SDL;
 use SDL::Events;
 use SDLx::App;
+use SDLx::Surface;
 use SDL::Image;
 use SDL::Video;
 use SDL::Surface;
@@ -34,7 +35,7 @@ my $display = SDL::Video::set_video_mode($screen_w, $screen_h, $bits_per_pixel, 
 my $display_surface = SDLx::Surface->new(surface => $display);
 my $display_surface_ref = \$display_surface;
 
-my $tiles_surface = SDL::Image::load(dirname(rel2abs($0)) . '/../tiles/JnRTiles.png'); 
+my $tiles_surface = SDLx::Surface->load(dirname(rel2abs($0)) . '/../tiles/JnRTiles.png'); #SDL::Image::load(dirname(rel2abs($0)) . '/../tiles/JnRTiles.png'); 
 croak(SDL::get_error) unless ($tiles_surface);
 
 my $sky_surface = SDL::Image::load(dirname(rel2abs($0)) . '/../tiles/cloud.jpg');
@@ -42,6 +43,23 @@ croak(SDL::get_error) unless ($sky_surface);
 
 my ($map_ref, $max_x) = create_map();
 my %map = %$map_ref;
+
+my $whole_map_surface = SDLx::Surface->new(width => $max_x, height => 768);
+croak(SDL::get_error) unless ($whole_map_surface);
+croak(SDL::get_error) if SDL::Video::set_color_key($whole_map_surface, SDL_SRCCOLORKEY, SDL::Video::map_RGB($whole_map_surface->format, 0, 0, 0));
+croak(SDL::get_error) if SDL::Video::set_alpha($whole_map_surface, 0, 0);
+
+my $tile_rect = [0, 0, 32, 32];
+foreach my $x (0..$max_x/32) {
+    my $val = $x*24; 
+    foreach my $y (0 .. 24) {
+        if (exists $map{$val + $y}) {  
+            $tiles_surface->blit($whole_map_surface, $tile_rect, [$x*32, $y*32, 32, 32]);
+        }
+    }
+}
+$whole_map_surface->flip;
+#SDL::Video::save_BMP($whole_map_surface->surface, "foo.bmp");
 
 #say 'total ', scalar keys %map;
 #say ((scalar keys %map) / 24); 
@@ -101,14 +119,18 @@ while (!$quit) {
         my $ch_pos_x = $ch->get_pos_x;     
         my $map_offset;
         my $sky_offset;
+        my $foo;
         if ($ch_pos_x < $screen_w/2 || $screen_w >= $max_x) {
             $sky_offset = $map_offset = 0;
+            $foo = 0;
         } elsif ($ch_pos_x - $screen_w/2 > $max_x - $screen_w) {
             $sky_offset = $max_x - $screen_w;
             $map_offset = $sky_offset / 32;
+            $foo = $sky_offset;
         } else { 
             $sky_offset = $ch_pos_x - $screen_w/2;
             $map_offset = $sky_offset / 32;
+            $foo = $sky_offset;
         }
 
         my ($len, $x) = (0, 0);
@@ -123,21 +145,17 @@ while (!$quit) {
         
         my $tile_rect = [0, 0, 32, 32];
         my $y_offset = $screen_h - 768;
-        foreach my $x ($map_offset..$map_offset+$screen_w/32) {
-            my $val = $x*24; #(int($x/32)*32 + $x%32)*24;
-            foreach my $y (0 .. 24) {
-                if (exists $map{$val + $y}) {
-                    $display_surface->blit_by($tiles_surface, $tile_rect, [($x-$map_offset)*32, $y_offset + 32*$y, 32, 32]);
-                }
-            }
-        }
-                        
+        $display_surface->blit_by(
+            $whole_map_surface, 
+            [$foo, 0, 1680, 768], 
+            [0, $y_offset, 1680, 768]); 
+
         $new_time = Time::HiRes::time;
         $ch->update_index;
         $ch->update_pos($new_time);
         $ch->draw($display_surface_ref);
         
-        $display_surface->flip;
+        $display_surface->update;
 
         my $diff = SDL::get_ticks() - $start_ticks;
         if ($FRAME_RATE > $diff) {
