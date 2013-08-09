@@ -34,7 +34,6 @@ my $display = SDL::Video::set_video_mode($screen_w, $screen_h, $bits_per_pixel, 
 my $display_surface = SDLx::Surface->new(surface => $display);
 my $display_surface_ref = \$display_surface;
 
-#test
 my $tiles_surface = SDL::Image::load(dirname(rel2abs($0)) . '/../tiles/JnRTiles.png'); 
 croak(SDL::get_error) unless ($tiles_surface);
 
@@ -153,7 +152,7 @@ while (!$quit) {
 sub create_map {
     my %map; 
     foreach my $x (0..1024*3 -1) {
-#        if ($x%24 == 23) {
+#       if ($x%24 == 23) {
         if (($x%24 != 22 && $x%24 != 21 && $x%24 != 18 && $x%24 != 17 && $x%24 != 17 && $x%24 != 16 && $x%24 != 16) && ($x == 23*4 || $x == 0 || $x == 23 || $x == 71 || $x == 58 || $x == 69 ||  $x == 84  || $x==119 || $x > 120 && $x != 769 && $x != 770)) {
             $map{$x} = 1;
         }
