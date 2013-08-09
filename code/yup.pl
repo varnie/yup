@@ -35,7 +35,7 @@ my $display = SDL::Video::set_video_mode($screen_w, $screen_h, $bits_per_pixel, 
 my $display_surface = SDLx::Surface->new(surface => $display);
 my $display_surface_ref = \$display_surface;
 
-my $tiles_surface = SDLx::Surface->load(dirname(rel2abs($0)) . '/../tiles/JnRTiles.png'); #SDL::Image::load(dirname(rel2abs($0)) . '/../tiles/JnRTiles.png'); 
+my $tiles_surface = SDLx::Surface->load(dirname(rel2abs($0)) . '/../tiles/JnRTiles.png');
 croak(SDL::get_error) unless ($tiles_surface);
 
 my $sky_surface = SDL::Image::load(dirname(rel2abs($0)) . '/../tiles/cloud.jpg');
