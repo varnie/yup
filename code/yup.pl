@@ -49,6 +49,12 @@ croak(SDL::get_error) unless ($trees_surface);
 croak(SDL::get_error) if SDL::Video::set_color_key($trees_surface, SDL_SRCCOLORKEY, SDL::Video::map_RGB($trees_surface->format, 0x91, 0x91, 0x91));
 croak(SDL::get_error) if SDL::Video::set_alpha($trees_surface, 0, 0);
 
+my $hills_surface = SDL::Image::load("$dir/../tiles/smw-bg-hills2.png");
+croak(SDL::get_error) unless ($hills_surface);
+
+croak(SDL::get_error) if SDL::Video::set_color_key($hills_surface, SDL_SRCCOLORKEY, SDL::Video::map_RGB($hills_surface->format, 0xFF, 0xE7, 0xB5));
+croak(SDL::get_error) if SDL::Video::set_alpha($hills_surface, 0, 0);
+
 my ($map_ref, $max_x) = create_map();
 my %map = %$map_ref;
 
@@ -146,6 +152,8 @@ while (!$quit) {
             $sky_offset -= ($sky_offset/4) * 3;
         }
 
+        my $hills_offset = $trees_offset;
+
         my ($len, $x) = (0, 0);
         while ($len < $screen_w) {
             my $cur_len = $sky_surface->w - $sky_offset;
@@ -156,16 +164,26 @@ while (!$quit) {
             $x += $cur_len;
         }
 
+        #$len = $x = 0;
+        #while ($len < $screen_w) {
+        #    my $cur_len = $trees_surface->w - $trees_offset;
+        #    $cur_len = $screen_w-$x unless ($x+$cur_len <= $screen_w);
+        #    $display_surface->blit_by($trees_surface, [$trees_offset, 330, $cur_len, 185], [$x, $screen_h-185, $cur_len, 185]);
+        #    $trees_offset = 0;
+        #    $len += $cur_len;
+        #    $x += $cur_len;
+        #}
+        
         $len = $x = 0;
         while ($len < $screen_w) {
-            my $cur_len = $trees_surface->w - $trees_offset;
+            my $cur_len = $hills_surface->w - $hills_offset;
             $cur_len = $screen_w-$x unless ($x+$cur_len <= $screen_w);
-            $display_surface->blit_by($trees_surface, [$trees_offset, 330, $cur_len, 185], [$x, $screen_h-185, $cur_len, 185]);
-            $trees_offset = 0;
+            $display_surface->blit_by($hills_surface, [$hills_offset, 0, $cur_len, $hills_surface->h], [$x, $screen_h-224, $cur_len, $hills_surface->h]);
+            $hills_offset = 0;
             $len += $cur_len;
             $x += $cur_len;
         }
-        
+
         my $tile_rect = [0, 0, 32, 32];
         my $y_offset = $screen_h - 768;
         $display_surface->blit_by(
