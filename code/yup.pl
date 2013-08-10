@@ -35,11 +35,19 @@ my $display = SDL::Video::set_video_mode($screen_w, $screen_h, $bits_per_pixel, 
 my $display_surface = SDLx::Surface->new(surface => $display);
 my $display_surface_ref = \$display_surface;
 
-my $tiles_surface = SDLx::Surface->load(dirname(rel2abs($0)) . '/../tiles/JnRTiles.png');
+my $dir = dirname(rel2abs($0));
+
+my $tiles_surface = SDLx::Surface->load("$dir/../tiles/JnRTiles.png");
 croak(SDL::get_error) unless ($tiles_surface);
 
-my $sky_surface = SDL::Image::load(dirname(rel2abs($0)) . '/../tiles/cloud.jpg');
+my $sky_surface = SDL::Image::load("$dir/../tiles/cloud.jpg");
 croak(SDL::get_error) unless ($sky_surface);
+
+my $trees_surface = SDL::Image::load("$dir/../tiles/0Jgad.png");
+croak(SDL::get_error) unless ($trees_surface);
+
+croak(SDL::get_error) if SDL::Video::set_color_key($trees_surface, SDL_SRCCOLORKEY, SDL::Video::map_RGB($trees_surface->format, 0x91, 0x91, 0x91));
+croak(SDL::get_error) if SDL::Video::set_alpha($trees_surface, 0, 0);
 
 my ($map_ref, $max_x) = create_map();
 my %map = %$map_ref;
@@ -117,28 +125,43 @@ while (!$quit) {
         $display_surface->draw_rect([0, $sky_surface->h, $screen_w, $screen_h], $bg_fill_color);
         
         my $ch_pos_x = $ch->get_pos_x;     
-        my $map_offset;
         my $sky_offset;
-        my $foo;
+        my $trees_offset;
+        my $map_offset;
         if ($ch_pos_x < $screen_w/2 || $screen_w >= $max_x) {
-            $sky_offset = $map_offset = 0;
-            $foo = 0;
+            $sky_offset = 0;
+            $trees_offset = $sky_offset;
+            $map_offset = 0;
         } elsif ($ch_pos_x - $screen_w/2 > $max_x - $screen_w) {
             $sky_offset = $max_x - $screen_w;
-            $map_offset = $sky_offset / 32;
-            $foo = $sky_offset;
+            $trees_offset = $sky_offset;
+            $map_offset = $sky_offset;
+
+            $sky_offset -= ($sky_offset/4) * 3;
         } else { 
             $sky_offset = $ch_pos_x - $screen_w/2;
-            $map_offset = $sky_offset / 32;
-            $foo = $sky_offset;
+            $trees_offset = $sky_offset;
+            $map_offset = $sky_offset;
+
+            $sky_offset -= ($sky_offset/4) * 3;
         }
 
         my ($len, $x) = (0, 0);
         while ($len < $screen_w) {
             my $cur_len = $sky_surface->w - $sky_offset;
             $cur_len = $screen_w-$x unless ($x+$cur_len <= $screen_w);
-            $display_surface->blit_by($sky_surface, [$sky_offset, 0, $cur_len, $sky_surface->h], [$x, 0, $x+$cur_len, $sky_surface->h]);
+            $display_surface->blit_by($sky_surface, [$sky_offset, 0, $cur_len, $sky_surface->h], [$x, 0, $cur_len, $sky_surface->h]);
             $sky_offset = 0;
+            $len += $cur_len;
+            $x += $cur_len;
+        }
+
+        $len = $x = 0;
+        while ($len < $screen_w) {
+            my $cur_len = $trees_surface->w - $trees_offset;
+            $cur_len = $screen_w-$x unless ($x+$cur_len <= $screen_w);
+            $display_surface->blit_by($trees_surface, [$trees_offset, 330, $cur_len, 185], [$x, $screen_h-185, $cur_len, 185]);
+            $trees_offset = 0;
             $len += $cur_len;
             $x += $cur_len;
         }
@@ -147,7 +170,7 @@ while (!$quit) {
         my $y_offset = $screen_h - 768;
         $display_surface->blit_by(
             $whole_map_surface, 
-            [$foo, 0, 1680, 768], 
+            [$map_offset, 0, 1680, 768], 
             [0, $y_offset, 1680, 768]); 
 
         $new_time = Time::HiRes::time;
@@ -170,8 +193,8 @@ while (!$quit) {
 sub create_map {
     my %map; 
     foreach my $x (0..1024*3 -1) {
-#       if ($x%24 == 23) {
-        if (($x%24 != 22 && $x%24 != 21 && $x%24 != 18 && $x%24 != 17 && $x%24 != 17 && $x%24 != 16 && $x%24 != 16) && ($x == 23*4 || $x == 0 || $x == 23 || $x == 71 || $x == 58 || $x == 69 ||  $x == 84  || $x==119 || $x > 120 && $x != 769 && $x != 770)) {
+       if ($x%24 == 23) {
+#        if (($x%24 != 22 && $x%24 != 21 && $x%24 != 18 && $x%24 != 17 && $x%24 != 17 && $x%24 != 16 && $x%24 != 16) && ($x == 23*4 || $x == 0 || $x == 23 || $x == 71 || $x == 58 || $x == 69 ||  $x == 84  || $x==119 || $x > 120 && $x != 769 && $x != 770)) {
             $map{$x} = 1;
         }
     }        
