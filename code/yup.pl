@@ -40,22 +40,24 @@ my $dir = dirname(rel2abs($0));
 my $tiles_surface = SDLx::Surface->load("$dir/../tiles/JnRTiles.png");
 croak(SDL::get_error) unless ($tiles_surface);
 
-my $sky_surface = SDL::Image::load("$dir/../tiles/cloud.jpg");
+
+my $sky_surface = SDL::Image::load("$dir/../tiles/cloud_new1.png");
 croak(SDL::get_error) unless ($sky_surface);
 
-my $trees_surface = SDL::Image::load("$dir/../tiles/0Jgad.png");
+
+my $trees_surface = SDL::Image::load("$dir/../tiles/forest_new.png");
 croak(SDL::get_error) unless ($trees_surface);
 
-croak(SDL::get_error) if SDL::Video::set_color_key($trees_surface, SDL_SRCCOLORKEY, SDL::Video::map_RGB($trees_surface->format, 0x91, 0x91, 0x91));
-croak(SDL::get_error) if SDL::Video::set_alpha($trees_surface, 0, 0);
 
-my $hills_surface = SDL::Image::load("$dir/../tiles/smw-bg-hills2.png");
-croak(SDL::get_error) unless ($hills_surface);
+my $mountains_surface = SDL::Image::load("$dir/../tiles/mountains_new1.png");
+croak(SDL::get_error) unless ($mountains_surface);
 
-croak(SDL::get_error) if SDL::Video::set_color_key($hills_surface, SDL_SRCCOLORKEY, SDL::Video::map_RGB($hills_surface->format, 0xFF, 0xE7, 0xB5));
-croak(SDL::get_error) if SDL::Video::set_alpha($hills_surface, 0, 0);
+croak(SDL::get_error) if SDL::Video::set_color_key($mountains_surface, SDL_SRCCOLORKEY, SDL::Video::map_RGB($mountains_surface->format, 255, 231, 181));
+croak(SDL::get_error) if SDL::Video::set_alpha($mountains_surface, 0, 0);
+
 
 my ($map_ref, $max_x) = create_map();
+
 my %map = %$map_ref;
 
 my $whole_map_surface = SDLx::Surface->new(width => $max_x, height => 768);
@@ -72,7 +74,7 @@ foreach my $x (0..$max_x/32) {
         }
     }
 }
-$whole_map_surface->flip;
+$whole_map_surface->update;
 #SDL::Video::save_BMP($whole_map_surface->surface, "foo.bmp");
 
 #say 'total ', scalar keys %map;
@@ -125,35 +127,22 @@ while (!$quit) {
     my $frames_cnt = 0;
     my $start_ticks = SDL::get_ticks();
     my $new_time = Time::HiRes::time;
-    my $bg_fill_color = SDL::Color->new(0x36, 0x9A, 0xD5);
+    my $bg_fill_color = SDL::Color->new(241, 203, 144);
     
     if ($new_time - $time > 0.01) {
         $display_surface->draw_rect([0, $sky_surface->h, $screen_w, $screen_h], $bg_fill_color);
         
         my $ch_pos_x = $ch->get_pos_x;     
-        my $sky_offset;
-        my $trees_offset;
         my $map_offset;
         if ($ch_pos_x < $screen_w/2 || $screen_w >= $max_x) {
-            $sky_offset = 0;
-            $trees_offset = $sky_offset;
             $map_offset = 0;
         } elsif ($ch_pos_x - $screen_w/2 > $max_x - $screen_w) {
-            $sky_offset = $max_x - $screen_w;
-            $trees_offset = $sky_offset;
-            $map_offset = $sky_offset;
-
-            $sky_offset -= ($sky_offset/4) * 3;
+            $map_offset = $max_x - $screen_w;
         } else { 
-            $sky_offset = $ch_pos_x - $screen_w/2;
-            $trees_offset = $sky_offset;
-            $map_offset = $sky_offset;
-
-            $sky_offset -= ($sky_offset/4) * 3;
+            $map_offset = $ch_pos_x - $screen_w/2;
         }
 
-        my $hills_offset = $trees_offset;
-
+        my $sky_offset = int ($map_offset / 5);
         my ($len, $x) = (0, 0);
         while ($len < $screen_w) {
             my $cur_len = $sky_surface->w - $sky_offset;
@@ -164,22 +153,24 @@ while (!$quit) {
             $x += $cur_len;
         }
 
-        #$len = $x = 0;
-        #while ($len < $screen_w) {
-        #    my $cur_len = $trees_surface->w - $trees_offset;
-        #    $cur_len = $screen_w-$x unless ($x+$cur_len <= $screen_w);
-        #    $display_surface->blit_by($trees_surface, [$trees_offset, 330, $cur_len, 185], [$x, $screen_h-185, $cur_len, 185]);
-        #    $trees_offset = 0;
-        #    $len += $cur_len;
-        #    $x += $cur_len;
-        #}
-        
+        my $trees_offset = $map_offset + ($map_offset/2);
         $len = $x = 0;
         while ($len < $screen_w) {
-            my $cur_len = $hills_surface->w - $hills_offset;
+            my $cur_len = $trees_surface->w - $trees_offset;
             $cur_len = $screen_w-$x unless ($x+$cur_len <= $screen_w);
-            $display_surface->blit_by($hills_surface, [$hills_offset, 0, $cur_len, $hills_surface->h], [$x, $screen_h-224, $cur_len, $hills_surface->h]);
-            $hills_offset = 0;
+            $display_surface->blit_by($trees_surface, [$trees_offset, 0, $cur_len, $trees_surface->h], [$x, $screen_h-$trees_surface->h, $cur_len, $trees_surface->h]);
+            $trees_offset = 0;
+            $len += $cur_len;
+            $x += $cur_len;
+        }
+        
+        my $mountains_offset = $map_offset + ($map_offset/16);
+        $len = $x = 0;
+        while ($len < $screen_w) {
+            my $cur_len = $mountains_surface->w - $mountains_offset;
+            $cur_len = $screen_w-$x unless ($x+$cur_len <= $screen_w);
+            $display_surface->blit_by($mountains_surface, [$mountains_offset, 0, $cur_len, $mountains_surface->h], [$x, $screen_h-$trees_surface->h, $cur_len, $mountains_surface->h]);
+            $mountains_offset = 0;
             $len += $cur_len;
             $x += $cur_len;
         }
@@ -211,8 +202,8 @@ while (!$quit) {
 sub create_map {
     my %map; 
     foreach my $x (0..1024*3 -1) {
-       if ($x%24 == 23) {
-#        if (($x%24 != 22 && $x%24 != 21 && $x%24 != 18 && $x%24 != 17 && $x%24 != 17 && $x%24 != 16 && $x%24 != 16) && ($x == 23*4 || $x == 0 || $x == 23 || $x == 71 || $x == 58 || $x == 69 ||  $x == 84  || $x==119 || $x > 120 && $x != 769 && $x != 770)) {
+#       if ($x%24 == 23) {
+        if (($x%24 != 22 && $x%24 != 21 && $x%24 != 18 && $x%24 != 17 && $x%24 != 17 && $x%24 != 16 && $x%24 != 16) && ($x == 23*4 || $x == 0 || $x == 23 || $x == 71 || $x == 58 || $x == 69 ||  $x == 84  || $x==119 || $x > 120 && $x != 769 && $x != 770)) {
             $map{$x} = 1;
         }
     }        

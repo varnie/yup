@@ -215,7 +215,8 @@ sub update_pos {
 
 sub is_map_val {
     my ($self, $x, $y) = (shift, shift, shift);
-    return ($y >= $self->screen_h-768) && $self->map_ref->{int($x/32)*24 + int(($y - ($self->screen_h-768))/32)};
+    my $aux_y = $self->screen_h-768;
+    return ($y >= $aux_y) && $self->map_ref->{int($x/32)*24 + int(($y - $aux_y)/32)};
 }
 
 sub update_index {
