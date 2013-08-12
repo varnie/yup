@@ -14,17 +14,15 @@ use SDL::Rect;
 use SDL::VideoInfo;
 use SDL::PixelFormat;
 
+use 5.010;
 use Time::HiRes;
 use Carp qw/croak/;
-
 use File::Basename;
 use File::Spec::Functions qw/rel2abs/;
-
 use FindBin;
 use lib "$FindBin::Bin/lib";
 
 use Character;
-use 5.010;
 
 SDL::init(SDL_INIT_VIDEO);
 
@@ -40,24 +38,26 @@ my $dir = dirname(rel2abs($0));
 my $tiles_surface = SDLx::Surface->load("$dir/../tiles/JnRTiles.png");
 croak(SDL::get_error) unless ($tiles_surface);
 
-
 my $sky_surface = SDL::Image::load("$dir/../tiles/cloud_new1.png");
 croak(SDL::get_error) unless ($sky_surface);
-
+$sky_surface = SDL::Video::display_format($sky_surface);
+croak(SDL::get_error) unless( $sky_surface);
 
 my $trees_surface = SDL::Image::load("$dir/../tiles/forest_new.png");
 croak(SDL::get_error) unless ($trees_surface);
-
+$trees_surface = SDL::Video::display_format($trees_surface);
+croak(SDL::get_error) unless( $trees_surface);
 
 my $mountains_surface = SDL::Image::load("$dir/../tiles/mountains_new1.png");
 croak(SDL::get_error) unless ($mountains_surface);
 
 croak(SDL::get_error) if SDL::Video::set_color_key($mountains_surface, SDL_SRCCOLORKEY, SDL::Video::map_RGB($mountains_surface->format, 255, 231, 181));
 croak(SDL::get_error) if SDL::Video::set_alpha($mountains_surface, 0, 0);
+$mountains_surface = SDL::Video::display_format($mountains_surface);
+croak(SDL::get_error) unless( $mountains_surface);
 
 
 my ($map_ref, $max_x) = create_map();
-
 my %map = %$map_ref;
 
 my $whole_map_surface = SDLx::Surface->new(width => $max_x, height => 768);
@@ -65,16 +65,21 @@ croak(SDL::get_error) unless ($whole_map_surface);
 croak(SDL::get_error) if SDL::Video::set_color_key($whole_map_surface, SDL_SRCCOLORKEY, SDL::Video::map_RGB($whole_map_surface->format, 0, 0, 0));
 croak(SDL::get_error) if SDL::Video::set_alpha($whole_map_surface, 0, 0);
 
+$whole_map_surface = SDL::Video::display_format($whole_map_surface);
+croak(SDL::get_error) unless( $whole_map_surface);
+
 my $tile_rect = [0, 0, 32, 32];
 foreach my $x (0..$max_x/32) {
     my $val = $x*24; 
-    foreach my $y (0 .. 24) {
+    foreach my $y (0..24) {
         if (exists $map{$val + $y}) {  
             $tiles_surface->blit($whole_map_surface, $tile_rect, [$x*32, $y*32, 32, 32]);
         }
     }
 }
-$whole_map_surface->update;
+undef $tiles_surface; #don't need it anymore
+
+croak(SDL::get_error) if SDL::Video::flip($whole_map_surface);
 #SDL::Video::save_BMP($whole_map_surface->surface, "foo.bmp");
 
 #say 'total ', scalar keys %map;
@@ -191,6 +196,7 @@ while (!$quit) {
 
         my $diff = SDL::get_ticks() - $start_ticks;
         if ($FRAME_RATE > $diff) {
+            say "wait: ", $FRAME_RATE-$diff;
             SDL::delay($FRAME_RATE-$diff);
         }
 
@@ -211,3 +217,4 @@ sub create_map {
     
     return (\%map, 1024*3);
 }
+
