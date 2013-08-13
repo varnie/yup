@@ -44,6 +44,12 @@ has sprite_index => (
     default => 0
 );                               
 
+has sprite_dt => (
+    is => 'rw',
+    isa => 'Num',
+    default => Time::HiRes::time
+);
+
 has step_x => (
     is => 'rw',
     isa => 'Num',
@@ -53,7 +59,7 @@ has step_x => (
 has step_x_speed => (
     is => 'rw',
     isa => 'Num',
-    default => 8
+    default => 3.25
 );
 
 has pos => (
@@ -220,9 +226,12 @@ sub is_map_val {
 }
 
 sub update_index {
-    my $self = shift;
-    if (++$self->{sprite_index} == 3) {
-        $self->{sprite_index} = 0;
+    my ($self, $new_dt) = (shift, shift);
+    if ($new_dt - $self->sprite_dt >= 0.1) {
+        $self->sprite_dt($new_dt);
+        if (++$self->{sprite_index} == 3) {
+            $self->{sprite_index} = 0;
+        }                                      
     }
 }
 

@@ -29,7 +29,7 @@ SDL::init(SDL_INIT_VIDEO);
 my $video_info = SDL::Video::get_video_info;
 my ($screen_w, $screen_h, $bits_per_pixel) = ($video_info->current_w, $video_info->current_h, $video_info->vfmt->BitsPerPixel);
 
-my $display = SDL::Video::set_video_mode($screen_w, $screen_h, $bits_per_pixel, SDL_HWSURFACE|SDL_DOUBLEBUF|SDL_FULLSCREEN);
+my $display = SDL::Video::set_video_mode($screen_w, $screen_h, $bits_per_pixel, SDL_SWSURFACE|SDL_ANYFORMAT|SDL_FULLSCREEN);
 my $display_surface = SDLx::Surface->new(surface => $display);
 my $display_surface_ref = \$display_surface;
 
@@ -51,8 +51,6 @@ croak(SDL::get_error) unless( $trees_surface);
 my $mountains_surface = SDL::Image::load("$dir/../tiles/mountains_new1.png");
 croak(SDL::get_error) unless ($mountains_surface);
 
-croak(SDL::get_error) if SDL::Video::set_color_key($mountains_surface, SDL_SRCCOLORKEY, SDL::Video::map_RGB($mountains_surface->format, 255, 231, 181));
-croak(SDL::get_error) if SDL::Video::set_alpha($mountains_surface, 0, 0);
 $mountains_surface = SDL::Video::display_format($mountains_surface);
 croak(SDL::get_error) unless( $mountains_surface);
 
@@ -60,13 +58,9 @@ croak(SDL::get_error) unless( $mountains_surface);
 my ($map_ref, $max_x) = create_map();
 my %map = %$map_ref;
 
-my $whole_map_surface = SDLx::Surface->new(width => $max_x, height => 768);
+my $whole_map_surface = SDLx::Surface->new(width => $max_x, height => 768, flags => SDL_ANYFORMAT & ~(SDL_SRCALPHA));
 croak(SDL::get_error) unless ($whole_map_surface);
-croak(SDL::get_error) if SDL::Video::set_color_key($whole_map_surface, SDL_SRCCOLORKEY, SDL::Video::map_RGB($whole_map_surface->format, 0, 0, 0));
-croak(SDL::get_error) if SDL::Video::set_alpha($whole_map_surface, 0, 0);
-
-$whole_map_surface = SDL::Video::display_format($whole_map_surface);
-croak(SDL::get_error) unless( $whole_map_surface);
+croak(SDL::get_error) if SDL::Video::set_color_key($whole_map_surface, SDL_SRCCOLORKEY | SDL_RLEACCEL,  0);
 
 my $tile_rect = [0, 0, 32, 32];
 foreach my $x (0..$max_x/32) {
@@ -77,6 +71,8 @@ foreach my $x (0..$max_x/32) {
         }
     }
 }
+$whole_map_surface = SDL::Video::display_format($whole_map_surface);
+croak(SDL::get_error) unless( $whole_map_surface);
 undef $tiles_surface; #don't need it anymore
 
 croak(SDL::get_error) if SDL::Video::flip($whole_map_surface);
@@ -100,7 +96,7 @@ my ($ch, $e, $quit, $time) = (
     Time::HiRes::time
 );
 
-my $FRAME_RATE = 1000/25;
+my $FRAME_RATE = 1000/60;
 
 while (!$quit) {
     SDL::Events::pump_events();
@@ -134,7 +130,7 @@ while (!$quit) {
     my $new_time = Time::HiRes::time;
     my $bg_fill_color = SDL::Color->new(241, 203, 144);
     
-    if ($new_time - $time > 0.01) {
+    if ($new_time - $time > 0.02) {
         $display_surface->draw_rect([0, $sky_surface->h, $screen_w, $screen_h], $bg_fill_color);
         
         my $ch_pos_x = $ch->get_pos_x;     
@@ -174,7 +170,7 @@ while (!$quit) {
         while ($len < $screen_w) {
             my $cur_len = $mountains_surface->w - $mountains_offset;
             $cur_len = $screen_w-$x unless ($x+$cur_len <= $screen_w);
-            $display_surface->blit_by($mountains_surface, [$mountains_offset, 0, $cur_len, $mountains_surface->h], [$x, $screen_h-$trees_surface->h, $cur_len, $mountains_surface->h]);
+            $display_surface->blit_by($mountains_surface, [$mountains_offset, 0, $cur_len, $mountains_surface->h], [$x, $screen_h-$trees_surface->h-$mountains_surface->h, $cur_len, $mountains_surface->h]);
             $mountains_offset = 0;
             $len += $cur_len;
             $x += $cur_len;
@@ -188,7 +184,7 @@ while (!$quit) {
             [0, $y_offset, 1680, 768]); 
 
         $new_time = Time::HiRes::time;
-        $ch->update_index;
+        $ch->update_index($new_time);
         $ch->update_pos($new_time);
         $ch->draw($display_surface_ref);
         
