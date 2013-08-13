@@ -51,7 +51,12 @@ croak(SDL::get_error) unless( $trees_surface);
 my $mountains_surface = SDL::Image::load("$dir/../tiles/mountains_new1.png");
 croak(SDL::get_error) unless ($mountains_surface);
 
-$mountains_surface = SDL::Video::display_format($mountains_surface);
+my $m_surface_new = SDLx::Surface->new(width => $mountains_surface->w, height => $mountains_surface->h, flags => SDL_ANYFORMAT & ~(SDL_SRCALPHA));
+croak(SDL::get_error) unless ($m_surface_new);
+croak(SDL::get_error) if SDL::Video::set_color_key($m_surface_new, SDL_SRCCOLORKEY | SDL_RLEACCEL, SDL::Video::map_RGB($m_surface_new->format, 0xf1, 0xcb, 0x86));
+SDL::Video::blit_surface($mountains_surface, undef, $m_surface_new, undef);
+
+$mountains_surface = SDL::Video::display_format($m_surface_new);
 croak(SDL::get_error) unless( $mountains_surface);
 
 
