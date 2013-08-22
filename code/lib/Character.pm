@@ -42,7 +42,7 @@ has sprite_index => (
     is => 'ro',
     isa => 'Num',
     default => 0
-);                               
+);
 
 has sprite_dt => (
     is => 'rw',
@@ -65,10 +65,16 @@ has step_x_speed => (
 has pos => (
     is => 'rw',
     isa => 'ArrayRef[Num]',
-    default => sub {[0, 282-32, 32, 32]}
+    default => sub {[50, 282-32, 32, 32]}
 );
 
 has dt => (
+    is => 'rw',
+    isa => 'Num',
+    default => Time::HiRes::time
+);
+
+has jump_dt => (
     is => 'rw',
     isa => 'Num',
     default => Time::HiRes::time
@@ -130,7 +136,7 @@ sub calc_map_pos {
 sub draw {
     my ($self, $display_surface_ref) = (shift, shift);
     my $src;
-    if ($self->step_x > 0) {                              
+    if ($self->step_x > 0) {
         $src = $self->look_sprites->[LOOK_AT_RIGHT];
         $src->[0] = 32*$self->sprite_index;
     } elsif ($self->step_x < 0) {
@@ -145,16 +151,16 @@ sub draw {
 
 sub update_pos {
     my ($self, $new_dt) = (shift, shift);
-    my ($x, $y) = ($self->pos->[0], $self->pos->[1]);  
+    my ($x, $y) = ($self->pos->[0], $self->pos->[1]);
 
     if ($self->step_x != 0) {
-        my $new_x = $x + $self->step_x_speed*$self->step_x;       
-        if ($new_x >= 0 && $new_x <= $self->map_width-32) { 
+        my $new_x = $x + $self->step_x_speed*$self->step_x;
+        if ($new_x >= 0 && $new_x <= $self->map_width-32) {
             if ($self->step_x == 1) {
                 if (!$self->is_map_val($new_x+32, $y)) {
                     $self->pos->[0] = $new_x;
                 } else {
-                    $self->pos->[0] = 32*(int($new_x/32));    
+                    $self->pos->[0] = 32*(int($new_x/32));
                 }
             } else {
                 if (!$self->is_map_val($new_x, $y)) {
@@ -163,28 +169,39 @@ sub update_pos {
                     $self->pos->[0] = 32*(int($new_x/32)+1);
                 }
             }
-        
+
             if (!$self->jumping && !$self->is_map_val($self->pos->[0], $self->pos->[1]+1)) {
+                say "BEGIN FAILING!";
                 $self->jumping(1);
                 $self->velocity(0);
+                $self->jump_dt(Time::HiRes::time);
             }
         }
-    } 
+    }
 
     if ($self->jumping) {
         # failing
-        if (!$self->velocity) { 
+
+        if (!$self->velocity) {
             say "FAILING";
 
-            if ($self->is_map_val($self->pos->[0], $self->pos->[1]) || $self->is_map_val($self->pos->[0]+31, $self->pos->[1])) {
+            if ($self->is_map_val($self->pos->[0]+8, $self->pos->[1]+32) || $self->is_map_val($self->pos->[0]+32-8, $self->pos->[1]+32)) {
                 $self->jumping(0);
             } else {
-                my $new_y = int($y + (5*9.81*(($new_dt - $self->dt)**2))/2); 
+                my $new_y = int($y + (5*9.81*(($new_dt - $self->jump_dt)**2))/2);
                 my $test_y = $self->pos->[1];
                 my $catched_thru_pass = 0;
                 my $diff = $self->screen_h - 768;
+
                 while ($test_y < $new_y) {
-                    if ($self->is_map_val($self->pos->[0], $test_y+32) || $self->is_map_val($self->pos->[0]+31, $test_y+32)) {
+
+                    if ($self->is_map_val($self->pos->[0], $self->pos->[1])) {
+                        $self->pos->[0] = int(1 + $self->pos->[0]/32) * 32;
+                    } elsif ($self->is_map_val($self->pos->[0]+32, $self->pos->[1])) {
+                        $self->pos->[0] = int($self->pos->[0]/32) * 32;
+                    }
+
+                    if ($self->is_map_val($self->pos->[0]+8, $test_y+32) || $self->is_map_val($self->pos->[0]+32-8, $test_y+32)) {
                         $self->pos->[1] = $test_y - ($test_y - $diff)%32;
                         $self->jumping(0);
 
@@ -202,6 +219,7 @@ sub update_pos {
         } else {
             # jumping up
             say "UP";
+
             my $new_velocity = $self->velocity - 9.81;
             if ($new_velocity < 0) {
                 $new_velocity = 0;
@@ -209,10 +227,9 @@ sub update_pos {
 
             my $new_y = $self->pos->[1] - $new_velocity;
             if (!$self->is_map_val($self->pos->[0], $new_y) && !$self->is_map_val($self->pos->[0]+31, $new_y)) {
-                $self->pos->[1] = $new_y; 
+                $self->pos->[1] = $new_y;
                 $self->velocity($new_velocity);
-            } else { 
-                $self->jumping(0);
+            } else {
                 $self->velocity(0);
             }
         }
@@ -222,7 +239,8 @@ sub update_pos {
 sub is_map_val {
     my ($self, $x, $y) = (shift, shift, shift);
     my $aux_y = $self->screen_h-768;
-    return ($y >= $aux_y) && $self->map_ref->{int($x/32)*24 + int(($y - $aux_y)/32)};
+    my $index = int($x/32)*24 + int(($y - $aux_y)/32);
+    return ($y >= $aux_y) && $self->map_ref->{$index};
 }
 
 sub update_index {
@@ -231,7 +249,7 @@ sub update_index {
         $self->sprite_dt($new_dt);
         if (++$self->{sprite_index} == 3) {
             $self->{sprite_index} = 0;
-        }                                      
+        }
     }
 }
 
