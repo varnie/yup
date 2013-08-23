@@ -102,6 +102,7 @@ my ($ch, $e, $quit, $time) = (
 );
 
 my $FRAME_RATE = 1000/60;
+my $bg_fill_color = SDL::Color->new(241, 203, 144);
 
 while (!$quit) {
     SDL::Events::pump_events();
@@ -117,7 +118,6 @@ while (!$quit) {
                 $ch->step_x(-1);
             } elsif ($key_sym == SDLK_UP) {
                 if (!$ch->jumping) { #:TODO: fix me
-                    say "reset jumping";
                     $ch->reset_velocity;
                     $ch->jumping(1);
                     $ch->jump_dt($time);
@@ -134,7 +134,6 @@ while (!$quit) {
     my $frames_cnt = 0;
     my $start_ticks = SDL::get_ticks();
     my $new_time = Time::HiRes::time;
-    my $bg_fill_color = SDL::Color->new(241, 203, 144);
 
     if ($new_time - $time > 0.02) {
         $display_surface->draw_rect([0, $sky_surface->h, $screen_w, $screen_h], $bg_fill_color);
@@ -160,7 +159,7 @@ while (!$quit) {
             $x += $cur_len;
         }
 
-        my $trees_offset = $map_offset + ($map_offset/2);
+        my $trees_offset = $map_offset;
         $len = $x = 0;
         while ($len < $screen_w) {
             my $cur_len = $trees_surface->w - $trees_offset;
@@ -171,7 +170,7 @@ while (!$quit) {
             $x += $cur_len;
         }
 
-        my $mountains_offset = $map_offset + ($map_offset/16);
+        my $mountains_offset = $map_offset + ($map_offset/24);
         $len = $x = 0;
         while ($len < $screen_w) {
             my $cur_len = $mountains_surface->w - $mountains_offset;
@@ -212,8 +211,8 @@ while (!$quit) {
 sub create_map {
     my %map;
     foreach my $x (0..1024*3 -1) {
-#       if ($x%24 == 23) {
-        if (($x%24 != 22 && $x%24 != 21 && $x%24 != 18 && $x%24 != 17 && $x%24 != 17 && $x%24 != 16 && $x%24 != 16) && ($x == 23*4 || $x == 0 || $x == 23 || $x == 71 || $x == 58 || $x == 69 ||  $x == 84  || $x==119 || $x > 120 && $x != 769 && $x != 770)) {
+        if ($x%24 == 23) {
+        #if (($x%24 != 22 && $x%24 != 21 && $x%24 != 18 && $x%24 != 17 && $x%24 != 17 && $x%24 != 16 && $x%24 != 16) && ($x == 23*4 || $x == 0 || $x == 23 || $x == 71 || $x == 58 || $x == 69 ||  $x == 84  || $x==119 || $x > 120 && $x != 769 && $x != 770)) {
             $map{$x} = 1;
         }
     }

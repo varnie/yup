@@ -122,7 +122,7 @@ sub get_pos_y {
 
 sub reset_velocity {
     my $self = shift;
-    $self->velocity(30);
+    $self->velocity(36);
 }
 
 sub calc_map_pos {
@@ -170,8 +170,7 @@ sub update_pos {
                 }
             }
 
-            if (!$self->jumping && !$self->is_map_val($self->pos->[0], $self->pos->[1]+1)) {
-                say "BEGIN FAILING!";
+            if (!$self->jumping && (!$self->is_map_val($self->pos->[0]+8, $self->pos->[1]+32) || !$self->is_map_val($self->pos->[0]+8, $self->pos->[1]+32))) {
                 $self->jumping(1);
                 $self->velocity(0);
                 $self->jump_dt(Time::HiRes::time);
@@ -183,12 +182,11 @@ sub update_pos {
         # failing
 
         if (!$self->velocity) {
-            say "FAILING";
 
-            if ($self->is_map_val($self->pos->[0]+8, $self->pos->[1]+32) || $self->is_map_val($self->pos->[0]+32-8, $self->pos->[1]+32)) {
-                $self->jumping(0);
-            } else {
-                my $new_y = int($y + (5*9.81*(($new_dt - $self->jump_dt)**2))/2);
+            #if ($self->is_map_val($self->pos->[0]+8, $self->pos->[1]+1) || $self->is_map_val($self->pos->[0]+32-8, $self->pos->[1]+1)) {
+                #$self->jumping(0);
+            #} else {
+                my $new_y = int($y + (7*9.81*(($new_dt - $self->jump_dt)**2))/2);
                 my $test_y = $self->pos->[1];
                 my $catched_thru_pass = 0;
                 my $diff = $self->screen_h - 768;
@@ -215,10 +213,9 @@ sub update_pos {
                 if (!$catched_thru_pass) {
                     $self->pos->[1] = $new_y;
                 }
-            }
+            #}
         } else {
             # jumping up
-            say "UP";
 
             my $new_velocity = $self->velocity - 9.81;
             if ($new_velocity < 0) {
