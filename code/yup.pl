@@ -148,7 +148,7 @@ while (!$quit) {
             $map_offset = $ch_pos_x - $screen_w/2;
         }
 
-        my $sky_offset = int ($map_offset / 5);
+        my $sky_offset = $map_offset / 5;
         my ($len, $x) = (0, 0);
         while ($len < $screen_w) {
             my $cur_len = $sky_surface->w - $sky_offset;
@@ -193,7 +193,7 @@ while (!$quit) {
         $ch->update_pos($new_time);
         $ch->draw($display_surface_ref);
 
-        #$display_surface->draw_rect([$ch->get_pos_x, $ch->get_pos_y, 31, 32], 0xFF0000);
+        #$display_surface->draw_rect([$ch->get_pos_x, $ch->get_pos_y, 31, 32], SDL::Video::map_RGB($m_surface_new->format, 0xFF, 0x00, 0x00));
 
         $display_surface->update;
 

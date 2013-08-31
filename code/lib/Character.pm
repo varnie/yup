@@ -186,7 +186,7 @@ sub update_pos {
             #if ($self->is_map_val($self->pos->[0]+8, $self->pos->[1]+1) || $self->is_map_val($self->pos->[0]+32-8, $self->pos->[1]+1)) {
                 #$self->jumping(0);
             #} else {
-                my $new_y = int($y + (7*9.81*(($new_dt - $self->jump_dt)**2))/2);
+                my $new_y = $y + (3*9.81*(($new_dt - $self->jump_dt)**2))/2;
                 my $test_y = $self->pos->[1];
                 my $catched_thru_pass = 0;
                 my $diff = $self->screen_h - 768;
@@ -199,7 +199,7 @@ sub update_pos {
                         $self->pos->[0] = int($self->pos->[0]/32) * 32;
                     }
 
-                    if ($self->is_map_val($self->pos->[0]+8, $test_y+32) || $self->is_map_val($self->pos->[0]+32-8, $test_y+32)) {
+                    if ($self->is_map_val($self->pos->[0]+8, $test_y+32) || $self->is_map_val($self->pos->[0]+24, $test_y+32)) {
                         $self->pos->[1] = $test_y - ($test_y - $diff)%32;
                         $self->jumping(0);
 
