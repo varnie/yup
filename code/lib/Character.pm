@@ -1,8 +1,9 @@
 package Character;
 
-use Moose;
+use Mouse;
 use File::Basename;
 use File::Spec::Functions qw/rel2abs/;
+use Time::HiRes;
 use Carp qw/croak/;
 use 5.010;
 
@@ -111,25 +112,22 @@ has map_ref => (
 );
 
 sub get_pos_x {
-    my $self = shift;
-    return $self->pos->[0];
+    return shift->pos->[0];
 }
 
 sub get_pos_y {
-    my $self = shift;
-    return $self->pos->[1];
+    return shift->pos->[1];
 }
 
 sub reset_velocity {
-    my $self = shift;
-    $self->velocity(36);
+    shift->velocity(36);
 }
 
 sub calc_map_pos {
     my $self = shift;
-    my ($pos_x, $pos_y) = ($self->get_pos_x, $self->get_pos_y);
+    my ($pos_x, $pos_y) = @{$self->pos}[0..1];
     my $x = (($pos_x < $self->screen_w/2) || ($self->screen_w >= $self->map_width)) ? $pos_x : $pos_x - $self->screen_w/2 > $self->map_width - $self->screen_w ? $pos_x - ($self->map_width - $self->screen_w) : $self->screen_w/2;
-    @{$self->map_pos}[0 .. 1] = ($x, $pos_y);
+    @{$self->map_pos}[0..1] = ($x, $pos_y);
     return $self->map_pos;
 }
 
@@ -236,8 +234,8 @@ sub update_pos {
 sub is_map_val {
     my ($self, $x, $y) = (shift, shift, shift);
     my $aux_y = $self->screen_h-768;
-    my $index = int($x/32)*24 + int(($y - $aux_y)/32);
-    return ($y >= $aux_y) && $self->map_ref->{$index};
+    #my $index = int($x/32)*24 + int(($y - $aux_y)/32);
+    return ($y >= $aux_y) && $self->map_ref->{int($x/32)*24 + int(($y-$aux_y)/32)};
 }
 
 sub update_index {
