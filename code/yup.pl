@@ -23,6 +23,7 @@ use FindBin;
 use lib "$FindBin::Bin/lib";
 
 use Character;
+use AnimatedSprite;
 
 SDL::init(SDL_INIT_VIDEO);
 
@@ -62,6 +63,9 @@ croak(SDL::get_error) unless( $mountains_surface);
 
 my ($map_ref, $max_x) = create_map();
 my %map = %$map_ref;
+
+my $map_animated_sprites_ref = create_animated_sprites_map();
+my %map_animated_sprites = %$map_animated_sprites_ref;
 
 my $whole_map_surface = SDLx::Surface->new(width => $max_x, height => 768, flags => SDL_ANYFORMAT & ~(SDL_SRCALPHA));
 croak(SDL::get_error) unless ($whole_map_surface);
@@ -191,6 +195,20 @@ while (!$quit) {
         $new_time = Time::HiRes::time;
         $ch->update_index($new_time);
         $ch->update_pos($new_time);
+
+        my $map_start = $map_offset/32;
+        foreach my $x ($map_start..$map_start+$screen_w/32) {
+            my $val = $x*24;
+            foreach my $y (0..24) {
+                my $index = $val+$y;
+                if (exists $map_animated_sprites{$index}) {
+                    my $sprite = $map_animated_sprites{$index};
+                    $sprite->update_index($new_time);
+                    $sprite->draw($display_surface_ref, [($x-$map_start)*32, $y_offset+32*$y, 32, 32]);
+                }
+            }
+        }
+
         $ch->draw($display_surface_ref);
 
         #$display_surface->draw_rect([$ch->get_pos_x, $ch->get_pos_y, 31, 32], SDL::Video::map_RGB($m_surface_new->format, 0xFF, 0x00, 0x00));
@@ -219,4 +237,12 @@ sub create_map {
     $map{94} = 1;
     $map{10} = 1;
     return (\%map, 1024*3);
+}
+
+sub create_animated_sprites_map {
+    my %map;
+    $map{64} = AnimatedSprite->new(sprites_count => 11);
+    $map{65} = AnimatedSprite->new(sprites_count => 11);
+    $map{27} = AnimatedSprite->new(sprites_count => 11);
+    return \%map;
 }

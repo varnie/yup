@@ -28,7 +28,7 @@ has map_pos => (
 has velocity => (
     is => 'rw',
     isa => 'Num',
-    default => 30,
+    default => 6,
     required => 1
 );
 
@@ -120,7 +120,7 @@ sub get_pos_y {
 }
 
 sub reset_velocity {
-    shift->velocity(36);
+    shift->velocity(6);
 }
 
 sub calc_map_pos {
@@ -184,7 +184,7 @@ sub update_pos {
             #if ($self->is_map_val($self->pos->[0]+8, $self->pos->[1]+1) || $self->is_map_val($self->pos->[0]+32-8, $self->pos->[1]+1)) {
                 #$self->jumping(0);
             #} else {
-                my $new_y = $y + (3*9.81*(($new_dt - $self->jump_dt)**2))/2;
+                my $new_y = $y + 2*(9.81*(($new_dt - $self->jump_dt)**2));
                 my $test_y = $self->pos->[1];
                 my $catched_thru_pass = 0;
                 my $diff = $self->screen_h - 768;
@@ -215,7 +215,7 @@ sub update_pos {
         } else {
             # jumping up
 
-            my $new_velocity = $self->velocity - 9.81;
+            my $new_velocity = $self->velocity - 3.6*($new_dt - $self->jump_dt);
             if ($new_velocity < 0) {
                 $new_velocity = 0;
             }
