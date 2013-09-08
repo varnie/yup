@@ -16,15 +16,15 @@ use SDL::PixelFormat;
 
 use 5.010;
 use Time::HiRes;
-use Carp qw/croak/;
-use File::Basename;
-use File::Spec::Functions qw/rel2abs/;
+
 use FindBin;
 use lib "$FindBin::Bin/lib";
 
 use Character;
 use AnimatedSprite;
 use TextureManager;
+
+#use Benchmark qw/cmpthese/;
 
 SDL::init(SDL_INIT_VIDEO);
 
@@ -34,8 +34,6 @@ my ($screen_w, $screen_h, $bits_per_pixel) = ($video_info->current_w, $video_inf
 my $display = SDL::Video::set_video_mode($screen_w, $screen_h, $bits_per_pixel, SDL_SWSURFACE|SDL_ANYFORMAT|SDL_FULLSCREEN);
 my $display_surface = SDLx::Surface->new(surface => $display);
 my $display_surface_ref = \$display_surface;
-
-my $dir = dirname(rel2abs($0));
 
 my $tiles_surface = TextureManager->instance->get('TILES');
 
@@ -194,6 +192,14 @@ while (!$quit) {
         $ch->update_pos($new_time);
 
         my $map_start = $map_offset/32;
+
+        #my @check_indexes = (int($map_start)..int($map_start)+($screen_w/32)*24);
+        #foreach my $index (grep { $_ ~~ @check_indexes } keys %map_animated_sprites) {
+        #    my $sprite = $map_animated_sprites{$index};
+        #    $sprite->update_index($new_time);
+        #    $sprite->draw($display_surface_ref, [(int($index/24)-$map_start)*32, $y_offset+($index%24)*32, 32, 32]);
+        #}
+
         foreach my $x ($map_start..$map_start+$screen_w/32) {
             my $val = $x*24;
             foreach my $y (0..24) {
@@ -207,8 +213,6 @@ while (!$quit) {
         }
 
         $ch->draw($display_surface_ref);
-
-        #$display_surface->draw_rect([$ch->get_pos_x, $ch->get_pos_y, 31, 32], SDL::Video::map_RGB($m_surface_new->format, 0xFF, 0x00, 0x00));
 
         $display_surface->update;
 
@@ -238,8 +242,49 @@ sub create_map {
 
 sub create_animated_sprites_map {
     my %map;
+    $map{0} = AnimatedSprite->new(sprites_count => 11);
     $map{64} = AnimatedSprite->new(sprites_count => 11);
     $map{65} = AnimatedSprite->new(sprites_count => 11);
     $map{27} = AnimatedSprite->new(sprites_count => 11);
     return \%map;
 }
+
+__END__
+my $m_s = 0;
+my $s_w = 1680;
+my $y_offs = 1050-658;
+cmpthese (-5, {
+    a => sub {
+        foreach my $index (grep {exists $map_animated_sprites{$_}} (int($m_s)..int($m_s)+($s_w/32)*24)) {
+            my $sprite = $map_animated_sprites{$index};
+            $sprite->update_index(10);
+            #say "index: $index";
+            $sprite->draw($display_surface_ref, [(int($index/24)-$m_s)*32, $y_offs+($index%24)*32, 32, 32]);
+            #say (((int($index/24)-$map_start)*32), " ", ($index%24)*32);
+        }
+    },
+    b => sub {
+        #say $map_start, " ", $map_start+$screen_w/32;
+        foreach my $x ($m_s..$m_s+$s_w/32) {
+            my $val = $x*24;
+            foreach my $y (0..24) {
+                my $index = $val+$y;
+                if (exists $map_animated_sprites{$index}) {
+                    my $sprite = $map_animated_sprites{$index};
+                    $sprite->update_index(10);
+                    $sprite->draw($display_surface_ref, [($x-$m_s)*32, $y_offs+32*$y, 32, 32]);
+                }
+            }
+        }
+   },
+   c => sub {
+        my @check_indexes = (int($m_s)..int($m_s)+($s_w/32)*24); 
+        foreach my $index (grep { $_ ~~ @check_indexes } keys %map_animated_sprites ) {
+            my $sprite = $map_animated_sprites{$index};
+            $sprite->update_index(10);
+            #say "index: $index";
+            $sprite->draw($display_surface_ref, [(int($index/24)-$m_s)*32, $y_offs+($index%24)*32, 32, 32]);
+            #say (((int($index/24)-$map_start)*32), " ", ($index%24)*32);
+        }
+    }
+});
