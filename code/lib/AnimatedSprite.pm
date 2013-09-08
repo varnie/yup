@@ -7,11 +7,14 @@ use Time::HiRes;
 use Carp qw/croak/;
 use 5.010;
 
+use TextureManager;
+
 has sprites => (
     is => 'ro',
     isa => 'SDL::Surface',
     lazy => 1,
-    builder => '_build_sprites'
+    builder => '_build_sprites',
+    init_arg => undef
 );
 
 has sprites_count => (
@@ -23,12 +26,14 @@ has sprites_count => (
 has sprite_index => (
     is => 'ro',
     isa => 'Num',
-    default => 0
+    lazy => 1,
+    default => sub { return int(rand(shift->sprites_count)); }
 );
 
 has sprite_dt => (
     is => 'rw',
     isa => 'Num',
+    lazy => 1,
     default => Time::HiRes::time
 );
 
@@ -45,7 +50,7 @@ sub draw {
 
 sub update_index {
     my ($self, $new_dt) = (shift, shift);
-    if ($new_dt - $self->sprite_dt >= 0.18) {
+    if ($new_dt - $self->sprite_dt >= 0.16) {
         $self->sprite_dt($new_dt);
         if (++$self->{sprite_index} == $self->sprites_count) {
             $self->{sprite_index} = 0;
@@ -55,11 +60,9 @@ sub update_index {
 }
 
 sub _build_sprites {
-    my $res = SDL::Image::load(dirname(rel2abs($0)) . '/../tiles/waterstrip11.png');
-    croak(SDL::get_error) unless ($res);
-    return $res;
+    return TextureManager->instance->get('WATER');
 }
 
-no Moose;
+no Mouse;
 __PACKAGE__->meta->make_immutable;
 1;

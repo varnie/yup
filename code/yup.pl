@@ -24,6 +24,7 @@ use lib "$FindBin::Bin/lib";
 
 use Character;
 use AnimatedSprite;
+use TextureManager;
 
 SDL::init(SDL_INIT_VIDEO);
 
@@ -36,21 +37,17 @@ my $display_surface_ref = \$display_surface;
 
 my $dir = dirname(rel2abs($0));
 
-my $tiles_surface = SDLx::Surface->load("$dir/../tiles/JnRTiles.png");
-croak(SDL::get_error) unless ($tiles_surface);
+my $tiles_surface = TextureManager->instance->get('TILES');
 
-my $sky_surface = SDL::Image::load("$dir/../tiles/cloud_new1.png");
-croak(SDL::get_error) unless ($sky_surface);
+my $sky_surface = TextureManager->instance->get('CLOUDS');
 $sky_surface = SDL::Video::display_format($sky_surface);
 croak(SDL::get_error) unless( $sky_surface);
 
-my $trees_surface = SDL::Image::load("$dir/../tiles/forest_new.png");
-croak(SDL::get_error) unless ($trees_surface);
+my $trees_surface = TextureManager->instance->get('FOREST');
 $trees_surface = SDL::Video::display_format($trees_surface);
 croak(SDL::get_error) unless( $trees_surface);
 
-my $mountains_surface = SDL::Image::load("$dir/../tiles/mountains_new1.png");
-croak(SDL::get_error) unless ($mountains_surface);
+my $mountains_surface = TextureManager->instance->get('MOUNTAINS');
 
 my $m_surface_new = SDLx::Surface->new(width => $mountains_surface->w, height => $mountains_surface->h, flags => SDL_ANYFORMAT & ~(SDL_SRCALPHA));
 croak(SDL::get_error) unless ($m_surface_new);
@@ -58,7 +55,7 @@ croak(SDL::get_error) if SDL::Video::set_color_key($m_surface_new, SDL_SRCCOLORK
 SDL::Video::blit_surface($mountains_surface, undef, $m_surface_new, undef);
 
 $mountains_surface = SDL::Video::display_format($m_surface_new);
-croak(SDL::get_error) unless( $mountains_surface);
+croak(SDL::get_error) unless ( $mountains_surface);
 
 
 my ($map_ref, $max_x) = create_map();
@@ -76,7 +73,7 @@ foreach my $x (0..$max_x/32) {
     my $val = $x*24;
     foreach my $y (0..24) {
         if (exists $map{$val + $y}) {
-            $tiles_surface->blit($whole_map_surface, $tile_rect, [$x*32, $y*32, 32, 32]);
+            $whole_map_surface->blit_by($tiles_surface, $tile_rect, [$x*32, $y*32, 32, 32]);
         }
     }
 }
@@ -121,7 +118,7 @@ while (!$quit) {
             } elsif ($key_sym == SDLK_LEFT) {
                 $ch->step_x(-1);
             } elsif ($key_sym == SDLK_UP) {
-                if (!$ch->jumping) { #:TODO: fix me
+                if (!$ch->jumping) {
                     $ch->reset_velocity;
                     $ch->jumping(1);
                     $ch->jump_dt($time);

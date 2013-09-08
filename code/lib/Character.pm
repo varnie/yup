@@ -7,6 +7,8 @@ use Time::HiRes;
 use Carp qw/croak/;
 use 5.010;
 
+use TextureManager;
+
 use constant {
     LOOK_AT_RIGHT => 0,
     LOOK_AT_LEFT => 1,
@@ -36,7 +38,8 @@ has sprites => (
     is => 'ro',
     isa => 'SDL::Surface',
     lazy => 1,
-    builder => '_build_sprites'
+    builder => '_build_sprites',
+    init_arg => undef
 );
 
 has sprite_index => (
@@ -48,7 +51,8 @@ has sprite_index => (
 has sprite_dt => (
     is => 'rw',
     isa => 'Num',
-    default => Time::HiRes::time
+    default => Time::HiRes::time,
+    lazy => 1
 );
 
 has step_x => (
@@ -249,11 +253,9 @@ sub update_index {
 }
 
 sub _build_sprites {
-    my $res = SDL::Image::load(dirname(rel2abs($0)) . '/../tiles/RE1_Sprites_v1_0_by_DoubleLeggy.png');
-    croak(SDL::get_error) unless ($res);
-    return $res;
+    return TextureManager->instance->get('MAIN_CHARACTER');
 }
 
-no Moose;
+no Mouse;
 __PACKAGE__->meta->make_immutable;
-1;
+1 ;
