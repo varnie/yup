@@ -193,23 +193,11 @@ while (!$quit) {
 
         my $map_start = $map_offset/32;
 
-        #my @check_indexes = (int($map_start)..int($map_start)+($screen_w/32)*24);
-        #foreach my $index (grep { $_ ~~ @check_indexes } keys %map_animated_sprites) {
-        #    my $sprite = $map_animated_sprites{$index};
-        #    $sprite->update_index($new_time);
-        #    $sprite->draw($display_surface_ref, [(int($index/24)-$map_start)*32, $y_offset+($index%24)*32, 32, 32]);
-        #}
-
-        foreach my $x ($map_start..$map_start+$screen_w/32) {
-            my $val = $x*24;
-            foreach my $y (0..24) {
-                my $index = $val+$y;
-                if (exists $map_animated_sprites{$index}) {
-                    my $sprite = $map_animated_sprites{$index};
-                    $sprite->update_index($new_time);
-                    $sprite->draw($display_surface_ref, [($x-$map_start)*32, $y_offset+32*$y, 32, 32]);
-                }
-            }
+        my @check_indexes = (int($map_start)..int($map_start)+($screen_w/32)*24);
+        foreach my $index (grep { $_ ~~ @check_indexes } keys %map_animated_sprites) {
+            my $sprite = $map_animated_sprites{$index};
+            $sprite->update_index($new_time);
+            $sprite->draw($display_surface_ref, [(int($index/24)-$map_start)*32, $y_offset+($index%24)*32, 32, 32]);
         }
 
         $ch->draw($display_surface_ref);
