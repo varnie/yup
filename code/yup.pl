@@ -180,7 +180,6 @@ while (!$quit) {
             $x += $cur_len;
         }
 
-        my $tile_rect = [0, 0, 32, 32];
         my $y_offset = $screen_h - 768;
         $display_surface->blit_by(
             $whole_map_surface,
@@ -216,25 +215,25 @@ while (!$quit) {
 }
 
 sub create_map {
-    my %map;
+    my %result;
     foreach my $x (0..1024*3 -1) {
         if ($x%24 == 23) {
         #if (($x%24 != 22 && $x%24 != 21 && $x%24 != 18 && $x%24 != 17 && $x%24 != 17 && $x%24 != 16 && $x%24 != 16) && ($x == 23*4 || $x == 0 || $x == 23 || $x == 71 || $x == 58 || $x == 69 ||  $x == 84  || $x==119 || $x > 120 && $x != 769 && $x != 770)) {
-            $map{$x} = 1;
+            $result{$x} = 1;
         }
     }
-    $map{94} = 1;
-    $map{10} = 1;
-    return (\%map, 1024*3);
+    $result{94} = 1;
+    $result{10} = 1;
+    return (\%result, 1024*3);
 }
 
 sub create_animated_sprites_map {
-    my %map;
-    $map{0} = AnimatedSprite->new(sprites_count => 11);
-    $map{64} = AnimatedSprite->new(sprites_count => 11);
-    $map{65} = AnimatedSprite->new(sprites_count => 11);
-    $map{27} = AnimatedSprite->new(sprites_count => 11);
-    return \%map;
+    my %result;
+    $result{0} = AnimatedSprite->new(sprites_count => 11);
+    $result{64} = AnimatedSprite->new(sprites_count => 11);
+    $result{65} = AnimatedSprite->new(sprites_count => 11);
+    $result{27} = AnimatedSprite->new(sprites_count => 11);
+    return \%result;
 }
 
 __END__

@@ -1,11 +1,14 @@
 package AnimatedSprite;
 
+use strict;
+use warnings;
+use 5.010;
+
 use Mouse;
 use File::Basename;
 use File::Spec::Functions qw/rel2abs/;
 use Time::HiRes;
 use Carp qw/croak/;
-use 5.010;
 
 use TextureManager;
 
