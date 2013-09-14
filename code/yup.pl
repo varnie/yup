@@ -104,7 +104,9 @@ my ($ch, $e, $quit, $time) = (
 my $FRAME_RATE = 1000/60;
 my $bg_fill_color = SDL::Color->new(241, 203, 144);
 
-my $text_obj = SDLx::Text->new(font => '/usr/share/fonts/truetype/freefont/FreeSerif.ttf', x => 10, y => 10);
+my $text_obj = SDLx::Text->new(#font => '/usr/share/fonts/truetype/freefont/FreeSerif.ttf',
+    x => 10, 
+    y => 10);
 while (!$quit) {
     SDL::Events::pump_events();
     while (SDL::Events::poll_event($e)) {
