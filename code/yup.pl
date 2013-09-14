@@ -2,19 +2,20 @@
 
 use strict;
 use warnings;
+use 5.010;
 
 use SDL;
 use SDL::Events;
-use SDLx::App;
-use SDLx::Surface;
 use SDL::Image;
 use SDL::Video;
 use SDL::Surface;
 use SDL::Rect;
 use SDL::VideoInfo;
 use SDL::PixelFormat;
+use SDLx::App;
+use SDLx::Surface;
+use SDLx::Text;
 
-use 5.010;
 use Time::HiRes;
 
 use FindBin;
@@ -103,6 +104,7 @@ my ($ch, $e, $quit, $time) = (
 my $FRAME_RATE = 1000/60;
 my $bg_fill_color = SDL::Color->new(241, 203, 144);
 
+my $text_obj = SDLx::Text->new(font => '/usr/share/fonts/truetype/freefont/FreeSerif.ttf', x => 10, y => 10);
 while (!$quit) {
     SDL::Events::pump_events();
     while (SDL::Events::poll_event($e)) {
@@ -201,16 +203,18 @@ while (!$quit) {
 
         $ch->draw($display_surface_ref);
 
-        $display_surface->update;
-
-        #my $diff = SDL::get_ticks() - $start_ticks;
-        #if ($FRAME_RATE > $diff) {
-        #    say "wait: ", $FRAME_RATE-$diff;
-        #    SDL::delay($FRAME_RATE-$diff);
-        #}
+        my $diff = SDL::get_ticks() - $start_ticks;
+        if ($FRAME_RATE > $diff) {
+            #say "wait: ", $FRAME_RATE-$diff;
+            SDL::delay(int($FRAME_RATE-$diff));
+        }
 
         $time = $new_time;
-        #say "FPS: ", (++$frames_cnt/$diff)*1000;
+        my $FPS = int((++$frames_cnt/$diff)*1000);
+        #say "FPS: ", $FPS;
+        $text_obj->write_to($$display_surface_ref, "FPS: $FPS");
+
+        $display_surface->update;
     }
 }
 
