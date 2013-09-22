@@ -25,8 +25,6 @@ use Character;
 use AnimatedSprite;
 use TextureManager;
 
-#use Benchmark qw/cmpthese/;
-
 SDL::init(SDL_INIT_VIDEO);
 
 my $video_info = SDL::Video::get_video_info;
@@ -82,7 +80,7 @@ croak(SDL::get_error) unless( $whole_map_surface);
 undef $tiles_surface; #don't need it anymore
 
 croak(SDL::get_error) if SDL::Video::flip($whole_map_surface);
-SDL::Video::save_BMP($whole_map_surface, "foo.bmp");
+#SDL::Video::save_BMP($whole_map_surface, "foo.bmp");
 
 #say 'total ', scalar keys %map;
 #say ((scalar keys %map) / 24);
@@ -267,43 +265,3 @@ sub create_animated_sprites_map {
     #$result{96*28} = AnimatedSprite->new(sprites_count => 11);
     return \%result;
 }
-
-__END__
-my $m_s = 0;
-my $s_w = 1680;
-my $y_offs = 1050-658;
-cmpthese (-5, {
-    a => sub {
-        foreach my $index (grep {exists $map_animated_sprites{$_}} (int($m_s)..int($m_s)+($s_w/32)*24)) {
-            my $sprite = $map_animated_sprites{$index};
-            $sprite->update_index(10);
-            #say "index: $index";
-            $sprite->draw($display_surface_ref, [(int($index/24)-$m_s)*32, $y_offs+($index%24)*32, 32, 32]);
-            #say (((int($index/24)-$map_start)*32), " ", ($index%24)*32);
-        }
-    },
-    b => sub {
-        #say $map_start, " ", $map_start+$screen_w/32;
-        foreach my $x ($m_s..$m_s+$s_w/32) {
-            my $val = $x*24;
-            foreach my $y (0..24) {
-                my $index = $val+$y;
-                if (exists $map_animated_sprites{$index}) {
-                    my $sprite = $map_animated_sprites{$index};
-                    $sprite->update_index(10);
-                    $sprite->draw($display_surface_ref, [($x-$m_s)*32, $y_offs+32*$y, 32, 32]);
-                }
-            }
-        }
-   },
-   c => sub {
-        my @check_indexes = (int($m_s)..int($m_s)+($s_w/32)*24);
-        foreach my $index (grep { $_ ~~ @check_indexes } keys %map_animated_sprites ) {
-            my $sprite = $map_animated_sprites{$index};
-            $sprite->update_index(10);
-            #say "index: $index";
-            $sprite->draw($display_surface_ref, [(int($index/24)-$m_s)*32, $y_offs+($index%24)*32, 32, 32]);
-            #say (((int($index/24)-$map_start)*32), " ", ($index%24)*32);
-        }
-    }
-});
