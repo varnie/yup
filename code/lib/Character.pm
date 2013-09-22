@@ -67,13 +67,13 @@ has step_x => (
 has step_x_speed => (
     is => 'rw',
     isa => 'Num',
-    default => 3.25
+    default => 2.8
 );
 
 has pos => (
     is => 'rw',
     isa => 'ArrayRef[Num]',
-    default => sub {[50, 282-32, 32, 32]}
+    default => sub {[0, 100, 32, 32]}
 );
 
 has dt => (
@@ -112,6 +112,12 @@ has map_width => (
     required => 1
 );
 
+has map_height => (
+    is => 'rw',
+    isa => 'Num',
+    required => 1
+);
+
 has map_ref => (
     is => 'rw',
     isa => 'HashRef[Num]',
@@ -134,7 +140,10 @@ sub calc_map_pos {
     my $self = shift;
     my ($pos_x, $pos_y) = @{$self->pos}[0..1];
     my $x = (($pos_x < $self->screen_w/2) || ($self->screen_w >= $self->map_width)) ? $pos_x : $pos_x - $self->screen_w/2 > $self->map_width - $self->screen_w ? $pos_x - ($self->map_width - $self->screen_w) : $self->screen_w/2;
-    @{$self->map_pos}[0..1] = ($x, $pos_y);
+
+    my $y = (($pos_y < $self->screen_h/2) || ($self->screen_h >= $self->map_height)) ? $pos_y : $pos_y - $self->screen_h/2 > $self->map_height - $self->screen_h ? $pos_y - ($self->map_height - $self->screen_h) : $self->screen_h/2;
+
+    @{$self->map_pos}[0..1] = ($x, $y);
     return $self->map_pos;
 }
 
@@ -155,7 +164,7 @@ sub draw {
 }
 
 sub update_pos {
-    my ($self, $new_dt) = (shift, shift);
+    my ($self, $new_dt, $display_surface_ref) = (shift, shift, shift);
     my ($x, $y) = ($self->pos->[0], $self->pos->[1]);
 
     if ($self->step_x != 0) {
@@ -175,10 +184,18 @@ sub update_pos {
                 }
             }
 
-            if (!$self->jumping && (!$self->is_map_val($self->pos->[0]+8, $self->pos->[1]+32) || !$self->is_map_val($self->pos->[0]+8, $self->pos->[1]+32))) {
-                $self->jumping(1);
-                $self->velocity(0);
-                $self->jump_dt(Time::HiRes::time);
+            if (!$self->jumping) {
+                if ($self->step_x == 1 && !$self->is_map_val($self->pos->[0]+12, $self->pos->[1]+64)) {
+                    
+                    $self->jumping(1);
+                    $self->velocity(0);
+                    $self->jump_dt(Time::HiRes::time);
+                } elsif ($self->step_x == -1 && !$self->is_map_val($self->pos->[0], $self->pos->[1]+64)) {
+
+                    $self->jumping(1);
+                    $self->velocity(0);
+                    $self->jump_dt(Time::HiRes::time);
+                }
             }
         }
     }
@@ -187,14 +204,14 @@ sub update_pos {
         # failing
 
         if (!$self->velocity) {
-
+            #say "FALLIN!";
             #if ($self->is_map_val($self->pos->[0]+8, $self->pos->[1]+1) || $self->is_map_val($self->pos->[0]+32-8, $self->pos->[1]+1)) {
-                #$self->jumping(0);
+            #    $self->jumping(0);
             #} else {
-                my $new_y = $y + 2*(9.81*(($new_dt - $self->jump_dt)**2));
+                my $new_y = 5 + $y + 2*(9.81*(($new_dt - $self->jump_dt)**2));
                 my $test_y = $self->pos->[1];
                 my $catched_thru_pass = 0;
-                my $diff = $self->screen_h - 768;
+                #my $diff = $self->screen_h;# - 768;
 
                 while ($test_y < $new_y) {
 
@@ -205,7 +222,8 @@ sub update_pos {
                     }
 
                     if ($self->is_map_val($self->pos->[0]+8, $test_y+32) || $self->is_map_val($self->pos->[0]+24, $test_y+32)) {
-                        $self->pos->[1] = $test_y - ($test_y - $diff)%32;
+                        #say "HERE ", $test_y;
+                        $self->pos->[1] = int($test_y - $test_y%32); #$test_y - ($test_y - $diff)%32;
                         $self->jumping(0);
 
                         $catched_thru_pass = 1;
@@ -240,9 +258,22 @@ sub update_pos {
 
 sub is_map_val {
     my ($self, $x, $y) = (shift, shift, shift);
-    my $aux_y = $self->screen_h-768;
-    #my $index = int($x/32)*24 + int(($y - $aux_y)/32);
-    return ($y >= $aux_y) && $self->map_ref->{int($x/32)*24 + int(($y-$aux_y)/32)};
+
+    #say $x, " ", $y;#, ": ", (int($x/32)*24, " ",    int((768*2-int($y))/768)*1024*3, " ", int((768 - int(int((768*2-int($y))%768)))/32));
+    #my $index = int($x/32)*24 + int((768*2-int($y))/768)*1024*3 + int((768 - int(int((768*2-int($y))%768)))/32);
+    my $index = int($x/32) + int(int($self->map_height-$y)/32)*96;
+    my $exist = exists $self->map_ref->{$index} ? 1 : 0;
+    #say "$x, $y, $index, $exist";# if $exist;
+    return $self->map_ref->{$index};
+
+    #my $aux_y = $self->screen_h-768;
+
+    #if ($y >= $aux_y) {
+    #    return $self->map_ref->{int($x/32)*24 + int(($y - $aux_y)/32)};
+    #} else {
+    #    say "index: ", int($x/32)*24 + int($y/32) + 32*24;
+    #    return $self->map_ref->{int($x/32)*24 + int($y/32) + 32*24};
+    #}
 }
 
 sub update_index {
