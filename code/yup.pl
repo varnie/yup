@@ -21,6 +21,9 @@ use Time::HiRes;
 use FindBin;
 use lib "$FindBin::Bin/lib";
 
+use File::Basename;
+use File::Spec::Functions qw/rel2abs/;
+
 use Character;
 use AnimatedSprite;
 use TextureManager;
@@ -104,7 +107,7 @@ my ($ch, $e, $quit, $time) = (
 my $FRAME_RATE = 1000/60;
 my $bg_fill_color = SDL::Color->new(241, 203, 144);
 
-my $text_obj = SDLx::Text->new(font => '/usr/share/fonts/truetype/freefont/FreeSerif.ttf',
+my $text_obj = SDLx::Text->new(font => dirname(rel2abs($0)) . '/../fonts/FreeSerif.ttf',
     x => 10,
     y => 10);
 while (!$quit) {
