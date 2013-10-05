@@ -30,7 +30,7 @@ has sprite_index => (
     is => 'ro',
     isa => 'Num',
     lazy => 1,
-    default => sub { return int(rand(shift->sprites_count)); }
+    default => sub { return int rand shift->sprites_count; }
 );
 
 has sprite_dt => (
@@ -47,12 +47,12 @@ has pos => (
     );
 
 sub draw {
-    my ($self, $display_surface_ref) = (shift, shift);
-    ${$display_surface_ref}->blit_by($self->sprites, $self->pos, shift);
+    my ($self, $display_surface_ref, $map_pos) = @_;;
+    $display_surface_ref->blit_by($self->sprites, $self->pos, $map_pos);
 }
 
 sub update_index {
-    my ($self, $new_dt) = (shift, shift);
+    my ($self, $new_dt) = @_;
     if ($new_dt - $self->sprite_dt >= 0.16) {
         $self->sprite_dt($new_dt);
         if (++$self->{sprite_index} == $self->sprites_count) {

@@ -35,7 +35,6 @@ my ($screen_w, $screen_h, $bits_per_pixel) = ($video_info->current_w, $video_inf
 
 my $display = SDL::Video::set_video_mode($screen_w, $screen_h, $bits_per_pixel, SDL_SWSURFACE|SDL_ANYFORMAT|SDL_FULLSCREEN);
 my $display_surface = SDLx::Surface->new(surface => $display);
-my $display_surface_ref = \$display_surface;
 
 my $tiles_surface = TextureManager->instance->get('TILES');
 
@@ -80,7 +79,6 @@ foreach my $x (0..($max_x/32)-1) {
 
 $whole_map_surface = SDL::Video::display_format($whole_map_surface);
 croak(SDL::get_error) unless( $whole_map_surface);
-undef $tiles_surface; #don't need it anymore
 
 croak(SDL::get_error) if SDL::Video::flip($whole_map_surface);
 #SDL::Video::save_BMP($whole_map_surface, "foo.bmp");
@@ -123,7 +121,6 @@ while (!$quit) {
             } elsif ($key_sym == SDLK_LEFT) {
                 $ch->step_x(-1);
             } elsif ($key_sym == SDLK_UP) {
-                #say "PRESSED UP";
                 if (!$ch->jumping) {
                     $ch->reset_velocity;
                     $ch->jumping(1);
@@ -164,38 +161,63 @@ while (!$quit) {
             $map_offset_y = $ch_pos_y - $screen_h/2;
         }
 
-        my $sky_offset = $map_offset_x / 5;
         my ($len, $x) = (0, 0);
-        while ($len < $screen_w) {
-            my $cur_len = $sky_surface->w - $sky_offset;
-            $cur_len = $screen_w-$x unless ($x+$cur_len <= $screen_w);
-            $display_surface->blit_by($sky_surface, [$sky_offset, 0, $cur_len, $sky_surface->h], [$x, 0, $cur_len, $sky_surface->h]);
-            $sky_offset = 0;
-            $len += $cur_len;
-            $x += $cur_len;
+
+        #draw sky
+        if ($map_offset_y < $sky_surface->h) {
+            my $sky_offset = $map_offset_x / 5;
+            $len = $x = 0;
+            while ($len < $screen_w) {
+                my $cur_len = $sky_surface->w - $sky_offset;
+                $cur_len = $screen_w-$x unless ($x+$cur_len <= $screen_w);
+                $display_surface->blit_by($sky_surface, [$sky_offset, 0, $cur_len, $sky_surface->h], [$x, 0, $cur_len, $sky_surface->h]);
+                $sky_offset = 0;
+                $len += $cur_len;
+                $x += $cur_len;
+            }
         }
 
-        #my $trees_offset = $map_offset_x;
-        #$len = $x = 0;
-        #while ($len < $screen_w) {
-        #    my $cur_len = $trees_surface->w - $trees_offset;
-        #    $cur_len = $screen_w-$x unless ($x+$cur_len <= $screen_w);
-        #    $display_surface->blit_by($trees_surface, [$trees_offset, 0, $cur_len, $trees_surface->h], [$x, $screen_h-$trees_surface->h, $cur_len, $trees_surface->h]);
-        #    $trees_offset = 0;
-        #    $len += $cur_len;
-        #    $x += $cur_len;
-        #}
+        #draw trees
+        if ($map_offset_y + $screen_h >= $max_y - $trees_surface->h) {
 
-        #my $mountains_offset = $map_offset_x + ($map_offset_x/24);
-        #$len = $x = 0;
-        #while ($len < $screen_w) {
-        #    my $cur_len = $mountains_surface->w - $mountains_offset;
-        #    $cur_len = $screen_w-$x unless ($x+$cur_len <= $screen_w);
-        #    $display_surface->blit_by($mountains_surface, [$mountains_offset, 0, $cur_len, $mountains_surface->h], [$x, $screen_h-$trees_surface->h-$mountains_surface->h, $cur_len, $mountains_surface->h]);
-        #    $mountains_offset = 0;
-        #    $len += $cur_len;
-        #    $x += $cur_len;
-        #}
+            my $trees_h = int($max_y - ($map_offset_y + $screen_h));
+            my $trees_offset = $map_offset_x;
+            $len = $x = 0;
+
+            while ($len < $screen_w) {
+                my $cur_len = $trees_surface->w - $trees_offset;
+                $cur_len = $screen_w-$x unless ($x+$cur_len <= $screen_w);
+                $display_surface->blit_by($trees_surface, [$trees_offset, 0, $cur_len, $trees_surface->h-$trees_h], [$x, $screen_h-$trees_surface->h+$trees_h, $cur_len, $trees_surface->h-$trees_h]);
+                $trees_offset = 0;
+                $len += $cur_len;
+                $x += $cur_len;
+            }
+        }
+
+        #draw mountains
+        if ($map_offset_y + $screen_h >= $max_y - $trees_surface->h - $mountains_surface->h) {
+
+            my ($h, $offs);
+            if ($map_offset_y+$screen_h >= $max_y) {
+               $offs = $screen_h-$trees_surface->h-$mountains_surface->h;
+           } elsif ($map_offset_y+$screen_h >= $max_y-$trees_surface->h) {
+               $offs = $screen_h - ($map_offset_y+$screen_h - ($max_y-($mountains_surface->h+$trees_surface->h)));
+           } else {
+               $offs = $screen_h - ($mountains_surface->h - ($max_y - ($map_offset_y+$screen_h)));
+           }
+
+            my $mountains_offset = $map_offset_x + ($map_offset_x/24);
+            $len = $x = 0;
+
+            while ($len < $screen_w) {
+                my $cur_len = $mountains_surface->w - $mountains_offset;
+                $cur_len = $screen_w-$x unless ($x+$cur_len <= $screen_w);
+                $display_surface->blit_by($mountains_surface, [$mountains_offset, 0, $cur_len, $mountains_surface->h], [$x, $offs, $cur_len, $mountains_surface->h]);
+                $mountains_offset = 0;
+                $len += $cur_len;
+                $x += $cur_len;
+            }
+        }
 
         $display_surface->blit_by(
             $whole_map_surface,
@@ -206,6 +228,7 @@ while (!$quit) {
         $ch->update_index($new_time);
         $ch->update_pos($new_time);
 
+        #draw animated tiles
         my $x_per_row = int($max_x/32);
         my $start_x = int($map_offset_x/32);
         my $x_per_screen = int($screen_w/32);
@@ -218,14 +241,13 @@ while (!$quit) {
             my $y = ($k - $x)/$x_per_row;
 
             if ($x >= $start_x && $x <= $start_x + $x_per_screen + 32 && $y_per_row - $y >= int($map_offset_y/32) && $y_per_row - $y <= int($map_offset_y/32)+$y_per_screen+32) {
-                my $index = $y*$x_per_row + $x;
-                my $sprite = $map_animated_sprites{$index};
+                my $sprite = $map_animated_sprites{$y*$x_per_row + $x};
                 $sprite->update_index($new_time);
-                $sprite->draw($display_surface_ref, [$x*32-$map_offset_x, $max_y-32-$y*32-$map_offset_y, 32, 32]);
+                $sprite->draw($display_surface, [$x*32-$map_offset_x, $max_y-32-$y*32-$map_offset_y, 32, 32]);
             }
         }
 
-        $ch->draw($display_surface_ref);
+        $ch->draw($display_surface);
 
         my $diff = SDL::get_ticks() - $start_ticks;
         if ($FRAME_RATE > $diff) {
@@ -237,7 +259,7 @@ while (!$quit) {
         if ($diff > 0) {
             my $FPS = int((++$frames_cnt/$diff)*1000);
             #say "FPS: ", $FPS;
-            $text_obj->write_to($$display_surface_ref, "FPS: $FPS");
+            $text_obj->write_to($display_surface, "FPS: $FPS");
         }
         $display_surface->update;
     }
@@ -247,12 +269,15 @@ sub create_map {
     my %result;
     foreach my $x (0..(1024*3/32)-1) {
         foreach my $y (0..(768*2/32)-1) {
-            if ($y == 0 || $y == 19 && $x != 4) {
+            if ($y == 0 || $y == 4 && $x != 3 || $y == 2 && $x !=4 || $y == 19 && $x != 4) {
                 $result{$x+$y*(1024*3/32)} = 1;
             }
         }
     }
-    $result{0} = 1;
+
+    $result{96*5+1} = 1;
+    $result{96*5+7} = 1;
+    delete $result{96*2+4};
 
     return (\%result, (1024*3, 768*2));
 }
