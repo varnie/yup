@@ -87,7 +87,7 @@ croak(SDL::get_error) if SDL::Video::flip($whole_map_surface);
 #say ((scalar keys %map) / 24);
 #test
 
-my ($ch, $e, $quit, $time) = (
+my ($ch, $e, $quit, $time, $aux_time, $FPS) = (
     Character->new(
         screen_w => $screen_w,
         screen_h => $screen_h,
@@ -99,7 +99,9 @@ my ($ch, $e, $quit, $time) = (
     ),
     SDL::Event->new,
     0,
-    Time::HiRes::time
+    Time::HiRes::time,
+    Time::HiRes::time,
+    0
 );
 
 my $FRAME_RATE = 1000/60;
@@ -197,7 +199,7 @@ while (!$quit) {
         #draw mountains
         if ($map_offset_y + $screen_h >= $max_y - $trees_surface->h - $mountains_surface->h) {
 
-            my ($h, $offs);
+            my $offs;
             if ($map_offset_y+$screen_h >= $max_y) {
                $offs = $screen_h-$trees_surface->h-$mountains_surface->h;
            } elsif ($map_offset_y+$screen_h >= $max_y-$trees_surface->h) {
@@ -233,14 +235,14 @@ while (!$quit) {
         my $start_x = int($map_offset_x/32);
         my $x_per_screen = int($screen_w/32);
         my $y_per_screen = int($screen_h/32);
-        my $start_y = $map_offset_y;
+        my $start_y = int($map_offset_y/32);
         my $y_per_row = int($max_y/32);
 
         foreach my $k (keys %map_animated_sprites) {
             my $x = $k % $x_per_row;
             my $y = ($k - $x)/$x_per_row;
 
-            if ($x >= $start_x && $x <= $start_x + $x_per_screen + 32 && $y_per_row - $y >= int($map_offset_y/32) && $y_per_row - $y <= int($map_offset_y/32)+$y_per_screen+32) {
+            if ($x >= $start_x && $x <= $start_x + $x_per_screen + 32 && $y_per_row - $y >= $start_y && $y_per_row - $y <= $start_y+$y_per_screen+32) {
                 my $sprite = $map_animated_sprites{$y*$x_per_row + $x};
                 $sprite->update_index($new_time);
                 $sprite->draw($display_surface, [$x*32-$map_offset_x, $max_y-32-$y*32-$map_offset_y, 32, 32]);
@@ -251,16 +253,19 @@ while (!$quit) {
 
         my $diff = SDL::get_ticks() - $start_ticks;
         if ($FRAME_RATE > $diff) {
-            #say "wait: ", $FRAME_RATE-$diff;
             SDL::delay(int($FRAME_RATE-$diff));
         }
 
         $time = $new_time;
         if ($diff > 0) {
-            my $FPS = int((++$frames_cnt/$diff)*1000);
-            #say "FPS: ", $FPS;
-            $text_obj->write_to($display_surface, "FPS: $FPS");
+            if ($new_time - $aux_time > 1) {
+                $FPS = int((++$frames_cnt/$diff)*1000);
+                $aux_time = $new_time;
+            }
         }
+
+        $text_obj->write_to($display_surface, "FPS: $FPS");
+
         $display_surface->update;
     }
 }
