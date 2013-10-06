@@ -216,7 +216,7 @@ sub update_pos {
                     }
                 }
 
-                if ($self->step_x == 1 && $self->is_map_val($self->pos->[0]+24, $test_y+32) || $self->step_x == -1 && $self->is_map_val($self->pos->[0]+8, $test_y+32) || $self->step_x == 0 && $self->is_map_val($self->pos->[0]+16, $test_y+32)) {
+                if ($self->step_x == 1 && $self->is_map_val($self->pos->[0]+20, $test_y+32) || $self->step_x == -1 && $self->is_map_val($self->pos->[0]+8, $test_y+32) || $self->step_x == 0 && $self->is_map_val($self->pos->[0]+16, $test_y+32)) {
                     $self->pos->[1] = int($test_y - $test_y%32);
                     $self->jumping(0);
 
