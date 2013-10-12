@@ -140,9 +140,10 @@ while (!$quit) {
     my $frames_cnt = 0;
     my $start_ticks = SDL::get_ticks();
     my $new_time = Time::HiRes::time;
+    my $screen_rect = [0, 0, $screen_w, $screen_h];
 
     if ($new_time - $time > 0.02) {
-        $display_surface->draw_rect([0, 0, $screen_w, $screen_h], $bg_fill_color);
+        $display_surface->draw_rect($screen_rect, $bg_fill_color);
 
         my ($ch_pos_x, $ch_pos_y) = ($ch->get_pos_x, $ch->get_pos_y);
         my $map_offset_x;
