@@ -169,17 +169,22 @@ sub update_pos {
     if ($self->step_x != 0) {
         my $new_x = $x + $self->step_x_speed*$self->step_x;
         if ($new_x >= 0 && $new_x <= $self->map_width-32) {
-            if ($self->step_x == 1) {
-                if (!$self->is_map_val($new_x+32, $y+($self->jumping ? 0 : 32))) {
-                    $self->pos->[0] = $new_x;
+
+            if (!($self->jumping && $self->pos->[1] % 32 == 0 && $self->is_map_val($self->pos->[0], $self->pos->[1]) && $self->is_map_val($self->pos->[0], $self->pos->[1]-1) && $self->is_map_val($self->pos->[0]+32, $self->pos->[1]))) {
+
+                if ($self->step_x == 1) {
+
+                    if (!$self->is_map_val($new_x+32, $y+($self->jumping ? 0 : 32))) {
+                        $self->pos->[0] = $new_x;
+                    } else {
+                        $self->pos->[0] = 32*(int($new_x/32));
+                    }
                 } else {
-                    $self->pos->[0] = 32*(int($new_x/32));
-                }
-            } else {
-                if (!$self->is_map_val($new_x, $y+($self->jumping ? 0 : 32))) {
-                    $self->pos->[0] = $new_x;
-                } else {
-                    $self->pos->[0] = 32*(int($new_x/32)+1);
+                    if (!$self->is_map_val($new_x, $y+($self->jumping ? 0 : 32))) {
+                        $self->pos->[0] = $new_x;
+                    } else {
+                        $self->pos->[0] = 32*(int($new_x/32)+1);
+                    }
                 }
             }
 
