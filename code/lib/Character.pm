@@ -260,9 +260,7 @@ sub update_pos {
 
 sub is_map_val {
     my ($self, $x, $y) = @_;
-
-    my $index = int($x/32) + int(($self->map_height-$y)/32)*96;
-    return exists $self->map_ref->{$index};
+    return exists $self->map_ref->{int($x/32) + int(($self->map_height-$y)/32)*96};
 }
 
 sub update_index {

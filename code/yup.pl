@@ -110,6 +110,14 @@ my $bg_fill_color = SDL::Color->new(241, 203, 144);
 my $text_obj = SDLx::Text->new(font => dirname(rel2abs($0)) . '/../fonts/FreeSerif.ttf',
     x => 10,
     y => 10);
+
+my $screen_rect = [0, 0, $screen_w, $screen_h];
+
+my $x_per_row = int($max_x/32);
+my $y_per_row = int($max_y/32);
+my $x_per_screen = int($screen_w/32);
+my $y_per_screen = int($screen_h/32);
+
 while (!$quit) {
     SDL::Events::pump_events();
     while (SDL::Events::poll_event($e)) {
@@ -140,29 +148,31 @@ while (!$quit) {
     my $frames_cnt = 0;
     my $start_ticks = SDL::get_ticks();
     my $new_time = Time::HiRes::time;
-    my $screen_rect = [0, 0, $screen_w, $screen_h];
 
     if ($new_time - $time > 0.02) {
         $display_surface->draw_rect($screen_rect, $bg_fill_color);
 
         my ($ch_pos_x, $ch_pos_y) = ($ch->get_pos_x, $ch->get_pos_y);
-        my $map_offset_x;
-        if ($ch_pos_x < $screen_w/2 || $screen_w >= $max_x) {
-            $map_offset_x = 0;
-        } elsif ($ch_pos_x - $screen_w/2 > $max_x - $screen_w) {
-            $map_offset_x = $max_x - $screen_w;
-        } else {
-            $map_offset_x = $ch_pos_x - $screen_w/2;
-        }
 
-        my $map_offset_y;
-        if ($ch_pos_y < $screen_h/2) {
-            $map_offset_y = 0;
-        } elsif ($ch_pos_y > $max_y - $screen_h/2) {
-            $map_offset_y = $max_y - $screen_h;
-        } else {
-            $map_offset_y = $ch_pos_y - $screen_h/2;
-        }
+        my $map_offset_x = do {
+            if ($ch_pos_x < $screen_w/2 || $screen_w >= $max_x) {
+                0;
+            } elsif ($ch_pos_x - $screen_w/2 > $max_x - $screen_w) {
+                $max_x - $screen_w;
+            } else {
+                $ch_pos_x - $screen_w/2;
+            }
+        };
+
+        my $map_offset_y = do {
+            if ($ch_pos_y < $screen_h/2) {
+                0;
+            } elsif ($ch_pos_y > $max_y - $screen_h/2) {
+                $max_y - $screen_h;
+            } else {
+                $ch_pos_y - $screen_h/2;
+            }
+        };
 
         my ($len, $x) = (0, 0);
 
@@ -170,6 +180,7 @@ while (!$quit) {
         if ($map_offset_y < $sky_surface->h) {
             my $sky_offset = $map_offset_x / 5;
             $len = $x = 0;
+
             while ($len < $screen_w) {
                 my $cur_len = $sky_surface->w - $sky_offset;
                 $cur_len = $screen_w-$x unless ($x+$cur_len <= $screen_w);
@@ -200,14 +211,15 @@ while (!$quit) {
         #draw mountains
         if ($map_offset_y + $screen_h >= $max_y - $trees_surface->h - $mountains_surface->h) {
 
-            my $offs;
-            if ($map_offset_y+$screen_h >= $max_y) {
-               $offs = $screen_h-$trees_surface->h-$mountains_surface->h;
-           } elsif ($map_offset_y+$screen_h >= $max_y-$trees_surface->h) {
-               $offs = $screen_h - ($map_offset_y+$screen_h - ($max_y-($mountains_surface->h+$trees_surface->h)));
-           } else {
-               $offs = $screen_h - ($mountains_surface->h - ($max_y - ($map_offset_y+$screen_h)));
-           }
+            my $offs = do {
+                if ($map_offset_y+$screen_h >= $max_y) {
+                    $screen_h-$trees_surface->h-$mountains_surface->h;
+                } elsif ($map_offset_y+$screen_h >= $max_y-$trees_surface->h) {
+                    $screen_h - ($map_offset_y+$screen_h - ($max_y-($mountains_surface->h+$trees_surface->h)));
+                } else {
+                    $screen_h - ($mountains_surface->h - ($max_y - ($map_offset_y+$screen_h)));
+                }
+            };
 
             my $mountains_offset = $map_offset_x + ($map_offset_x/24);
             $len = $x = 0;
@@ -225,19 +237,15 @@ while (!$quit) {
         $display_surface->blit_by(
             $whole_map_surface,
             [$map_offset_x, $map_offset_y, $screen_w, $screen_h],
-            [0, 0, $screen_w, $screen_h]);
+            $screen_rect);
 
         $new_time = Time::HiRes::time;
         $ch->update_index($new_time);
         $ch->update_pos($new_time);
 
         #draw animated tiles
-        my $x_per_row = int($max_x/32);
         my $start_x = int($map_offset_x/32);
-        my $x_per_screen = int($screen_w/32);
-        my $y_per_screen = int($screen_h/32);
         my $start_y = int($map_offset_y/32);
-        my $y_per_row = int($max_y/32);
 
         foreach my $k (keys %map_animated_sprites) {
             my $x = $k % $x_per_row;
