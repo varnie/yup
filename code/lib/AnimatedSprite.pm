@@ -5,8 +5,6 @@ use warnings;
 use 5.010;
 
 use Mouse;
-use File::Basename;
-use File::Spec::Functions qw/rel2abs/;
 use Time::HiRes;
 
 use TextureManager;
