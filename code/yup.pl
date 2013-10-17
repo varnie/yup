@@ -78,7 +78,7 @@ foreach my $x (0..($max_x/32)-1) {
 }
 
 $whole_map_surface = SDL::Video::display_format($whole_map_surface);
-croak(SDL::get_error) unless( $whole_map_surface);
+croak(SDL::get_error) unless ($whole_map_surface);
 
 croak(SDL::get_error) if SDL::Video::flip($whole_map_surface);
 #SDL::Video::save_BMP($whole_map_surface, "foo.bmp");
@@ -121,9 +121,8 @@ my $y_per_screen = int($screen_h/32);
 while (!$quit) {
     SDL::Events::pump_events();
     while (SDL::Events::poll_event($e)) {
-        my $key_sym;
         if ($e->type == SDL_KEYDOWN) {
-            $key_sym = $e->key_sym;
+            my $key_sym = $e->key_sym;
             if ($key_sym == SDLK_ESCAPE) {
                 $quit = 1;
             } elsif ($key_sym == SDLK_RIGHT) {
@@ -138,7 +137,7 @@ while (!$quit) {
                 }
             }
         } elsif ($e->type == SDL_KEYUP) {
-            $key_sym = $e->key_sym;
+            my $key_sym = $e->key_sym;
             if (($key_sym == SDLK_RIGHT && $ch->step_x == 1) || ($key_sym == SDLK_LEFT && $ch->step_x == -1)) {
                 $ch->step_x(0);
             }
@@ -177,14 +176,25 @@ while (!$quit) {
         my ($len, $x) = (0, 0);
 
         #draw sky
-        if ($map_offset_y < $sky_surface->h) {
+        if ($map_offset_y < $sky_surface->h + $screen_h) {
+
+            my $offs = do {
+                if ($map_offset_y < $sky_surface->h) {
+                    0;
+                } else {
+                    $map_offset_y - $sky_surface->h;
+                }
+            };
+
             my $sky_offset = $map_offset_x / 5;
+            my $sky_surface_h = $sky_surface->h;
             $len = $x = 0;
 
             while ($len < $screen_w) {
                 my $cur_len = $sky_surface->w - $sky_offset;
                 $cur_len = $screen_w-$x unless ($x+$cur_len <= $screen_w);
-                $display_surface->blit_by($sky_surface, [$sky_offset, 0, $cur_len, $sky_surface->h], [$x, 0, $cur_len, $sky_surface->h]);
+                $display_surface->blit_by($sky_surface, [$sky_offset, $offs, $cur_len, $sky_surface_h-$offs], [$x, 0, $cur_len, $sky_surface_h-$offs-$offs]);
+
                 $sky_offset = 0;
                 $len += $cur_len;
                 $x += $cur_len;
@@ -196,12 +206,13 @@ while (!$quit) {
 
             my $trees_h = int($max_y - ($map_offset_y + $screen_h));
             my $trees_offset = $map_offset_x;
+            my $trees_offset_h = $trees_surface->h-$trees_h;
             $len = $x = 0;
 
             while ($len < $screen_w) {
                 my $cur_len = $trees_surface->w - $trees_offset;
                 $cur_len = $screen_w-$x unless ($x+$cur_len <= $screen_w);
-                $display_surface->blit_by($trees_surface, [$trees_offset, 0, $cur_len, $trees_surface->h-$trees_h], [$x, $screen_h-$trees_surface->h+$trees_h, $cur_len, $trees_surface->h-$trees_h]);
+                $display_surface->blit_by($trees_surface, [$trees_offset, 0, $cur_len, $trees_offset_h], [$x, $screen_h-$trees_surface->h+$trees_h, $cur_len, $trees_offset_h]);
                 $trees_offset = 0;
                 $len += $cur_len;
                 $x += $cur_len;
@@ -222,12 +233,13 @@ while (!$quit) {
             };
 
             my $mountains_offset = $map_offset_x + ($map_offset_x/24);
+            my $mountains_surface_h = $mountains_surface->h;
             $len = $x = 0;
 
             while ($len < $screen_w) {
                 my $cur_len = $mountains_surface->w - $mountains_offset;
                 $cur_len = $screen_w-$x unless ($x+$cur_len <= $screen_w);
-                $display_surface->blit_by($mountains_surface, [$mountains_offset, 0, $cur_len, $mountains_surface->h], [$x, $offs, $cur_len, $mountains_surface->h]);
+                $display_surface->blit_by($mountains_surface, [$mountains_offset, 0, $cur_len, $mountains_surface_h], [$x, $offs, $cur_len, $mountains_surface_h]);
                 $mountains_offset = 0;
                 $len += $cur_len;
                 $x += $cur_len;
@@ -267,7 +279,7 @@ while (!$quit) {
 
         $time = $new_time;
         if ($diff > 0) {
-            if ($new_time - $aux_time > 1) {
+            if ($new_time - $aux_time > 5) {
                 $FPS = int((++$frames_cnt/$diff)*1000);
                 $aux_time = $new_time;
             }
@@ -282,8 +294,8 @@ while (!$quit) {
 sub create_map {
     my %result;
     foreach my $x (0..(1024*3/32)-1) {
-        foreach my $y (0..(768*2/32)-1) {
-            if ($y == 0 || $y == 4 && $x != 3 || $y == 2 && $x !=4 || $y == 19 && $x != 4) {
+        foreach my $y (0..(768*3/32)-1) {
+            if ($y == 0 || $y == 4 && $x != 3 || $y == 2 && $x !=4 || $y == 19 && $x != 4 || $y == 29) {
                 $result{$x+$y*(1024*3/32)} = 1;
             }
         }
@@ -293,7 +305,7 @@ sub create_map {
     $result{96*5+7} = 1;
     delete $result{96*2+4};
 
-    return (\%result, (1024*3, 768*2));
+    return (\%result, (1024*3, 768*3));
 }
 
 sub create_animated_sprites_map {
