@@ -109,6 +109,7 @@ my ($ch, $e, $quit, $time, $aux_time, $FPS) = (
 my $FRAME_RATE = 1000/60;
 my $bg_fill_color = SDL::Color->new(241, 203, 144);
 
+my ($vol, $dir, $file) = File::Spec->splitpath(dirname($0));
 my $text_obj = SDLx::Text->new(font => File::Spec->catfile($vol, $dir, 'fonts', 'FreeSerif.ttf'),
     x => 10,
     y => 10);
