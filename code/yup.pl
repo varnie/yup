@@ -195,7 +195,7 @@ while (!$quit) {
             while ($len < $screen_w) {
                 my $cur_len = $sky_surface->w - $sky_offset;
                 $cur_len = $screen_w-$x unless ($x+$cur_len <= $screen_w);
-                $display_surface->blit_by($sky_surface, [$sky_offset, $offs, $cur_len, $sky_surface_h-$offs], [$x, 0, $cur_len, $sky_surface_h-$offs-$offs]);
+                $display_surface->blit_by($sky_surface, [$sky_offset, $offs, $cur_len, $sky_surface_h-$offs], [$x, 0, $cur_len, $sky_surface_h-$offs]);
 
                 $sky_offset = 0;
                 $len += $cur_len;
