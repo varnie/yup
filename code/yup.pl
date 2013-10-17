@@ -24,7 +24,7 @@ use FindBin;
 use lib "$FindBin::Bin/lib";
 
 use File::Basename;
-use File::Spec::Functions qw/rel2abs/;
+use File::Spec;
 
 use Character;
 use AnimatedSprite;
@@ -109,7 +109,7 @@ my ($ch, $e, $quit, $time, $aux_time, $FPS) = (
 my $FRAME_RATE = 1000/60;
 my $bg_fill_color = SDL::Color->new(241, 203, 144);
 
-my $text_obj = SDLx::Text->new(font => dirname(rel2abs($0)) . '/../fonts/FreeSerif.ttf',
+my $text_obj = SDLx::Text->new(font => File::Spec->catfile($vol, $dir, 'fonts', 'FreeSerif.ttf'),
     x => 10,
     y => 10);
 
