@@ -4,6 +4,8 @@ use strict;
 use warnings;
 use 5.010;
 
+use Carp qw/croak/;
+
 use SDL;
 use SDL::Events;
 use SDL::Image;
