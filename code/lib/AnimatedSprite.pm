@@ -44,7 +44,7 @@ has pos => (
     );
 
 sub draw {
-    my ($self, $display_surface_ref, $map_pos) = @_;;
+    my ($self, $display_surface_ref, $map_pos) = @_;
     $display_surface_ref->blit_by($self->sprites, $self->pos, $map_pos);
 }
 
