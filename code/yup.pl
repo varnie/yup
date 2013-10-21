@@ -269,9 +269,9 @@ while (!$quit) {
             my $y = ($k - $x)/$x_per_row;
 
             if ($x >= $start_x && $x <= $start_x + $x_per_screen + 32 && $y_per_row - $y >= $start_y && $y_per_row - $y <= $start_y+$y_per_screen+32) {
-                my $sprite = $map_animated_sprites{$y*$x_per_row + $x};
+                my $sprite = $map_animated_sprites{$k};
                 $sprite->update_index($new_time);
-                $sprite->draw($display_surface, [$x*32-$map_offset_x, $max_y-32-$y*32-$map_offset_y, 32, 32]);
+                $sprite->draw($display_surface, [32*$x-$map_offset_x, $max_y-32*($y+1)-$map_offset_y, 32, 32]);
             }
         }
 
