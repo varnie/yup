@@ -33,7 +33,7 @@ has textures => (
 );
 
 sub get {
-    my ($self, $name) = (shift, shift);
+    my ($self, $name) = @_;
     if (exists TEXTURE_NAMES->{$name}) {
         if (exists $self->{textures}->{$name}) {
             return $self->{textures}->{$name};
