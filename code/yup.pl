@@ -122,6 +122,7 @@ my $x_per_row = int($max_x/32);
 my $y_per_row = int($max_y/32);
 my $x_per_screen = int($screen_w/32);
 my $y_per_screen = int($screen_h/32);
+my @animated_sprites_keys = keys %map_animated_sprites;
 
 while (!$quit) {
     SDL::Events::pump_events();
@@ -264,14 +265,16 @@ while (!$quit) {
         my $start_x = int($map_offset_x/32);
         my $start_y = int($map_offset_y/32);
 
-        foreach my $k (keys %map_animated_sprites) {
+        foreach my $k (@animated_sprites_keys) {
             my $x = $k % $x_per_row;
-            my $y = ($k - $x)/$x_per_row;
 
-            if ($x >= $start_x && $x <= $start_x + $x_per_screen + 32 && $y_per_row - $y >= $start_y && $y_per_row - $y <= $start_y+$y_per_screen+32) {
-                my $sprite = $map_animated_sprites{$k};
-                $sprite->update_index($new_time);
-                $sprite->draw($display_surface, [32*$x-$map_offset_x, $max_y-32*($y+1)-$map_offset_y, 32, 32]);
+             if ($x >= $start_x && $x <= $start_x + $x_per_screen+32) {
+                my $y = ($k-$x)/$x_per_row;
+                if ($y_per_row-$y >= $start_y && $y_per_row-$y <= $start_y+$y_per_screen+32) {
+                    my $sprite = $map_animated_sprites{$k};
+                    $sprite->update_index($new_time);
+                    $sprite->draw($display_surface, [32*$x-$map_offset_x, $max_y-32*($y+1)-$map_offset_y, 32, 32]);
+                }
             }
         }
 
