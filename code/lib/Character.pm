@@ -171,6 +171,7 @@ sub update_pos {
             if (!($self->jumping && $y % 32 == 0 && $self->is_map_val($x, $y) && $self->is_map_val($x, $y-1) && $self->is_map_val($x+32, $y))) {
 
                 if ($self->step_x == 1) {
+
                     if (!$self->is_map_val($new_x+32, $y+($self->jumping ? 0 : 32))) {
                         $self->pos->[0] = $x = $new_x;
                     } else {
@@ -200,8 +201,9 @@ sub update_pos {
         # failing
 
         if (!$self->velocity) {
-            my $new_y = 5 + $y + 19.62*(($new_dt - $self->jump_dt)**2);
-            my ($test_y, $catched_thru_pass) = ($y, 0);
+            my $new_y = 5 + $y + 2*(9.81*(($new_dt - $self->jump_dt)**2));
+            my $test_y = $y;
+            my $catched_thru_pass = 0;
 
             while ($test_y < $new_y) {
 
@@ -213,7 +215,7 @@ sub update_pos {
                     }
                 }
 
-                if ($self->step_x == 1 && $self->is_map_val($x+20, $test_y+32) || $self->step_x == -1 && $self->is_map_val($x+12, $test_y+32) || $self->step_x == 0 && $self->is_map_val($x+16, $test_y+32)) {
+                if ($self->step_x == 1 && $self->is_map_val($x+20, $test_y+32) || $self->step_x == -1 && $self->is_map_val($x+8, $test_y+32) || $self->step_x == 0 && $self->is_map_val($x+16, $test_y+32)) {
                     $self->pos->[1] = $y = int($test_y - $test_y%32);
                     $self->jumping(0);
 
@@ -227,16 +229,20 @@ sub update_pos {
             if (!$catched_thru_pass) {
                 $self->pos->[1] = $y = $new_y;
             }
+            #}
         } else {
             # jumping up
             if ($y % 32 == 0 && $self->is_map_val($x, $y) && $self->is_map_val($x, $y-1) && $self->is_map_val($x+32, $y)) {
                 $self->jumping(0);
             } else {
+
                 my $new_velocity = $self->velocity - 3.6*($new_dt - $self->jump_dt);
-                $new_velocity = 0 if $new_velocity < 0;
+                if ($new_velocity < 0) {
+                    $new_velocity = 0;
+                }
 
                 my $new_y = $y - $new_velocity;
-                if (!($self->is_map_val($x, $new_y) && $self->is_map_val($x+31, $new_y))) {
+                if (!$self->is_map_val($x, $new_y) && !$self->is_map_val($x+31, $new_y)) {
                     $self->pos->[1] = $y = $new_y;
                     $self->velocity($new_velocity);
                 } else {
@@ -249,7 +255,7 @@ sub update_pos {
 
 sub is_map_val {
     my $self = shift;
-    return exists $self->map_ref->{int($_[0]/32) + int(($self->map_height-$_[1])/32)*96}; #$x + $y*96
+    return exists $self->map_ref->{int($_[0]/32) + int(($self->map_height-$_[1])/32)*96};
 }
 
 sub update_index {

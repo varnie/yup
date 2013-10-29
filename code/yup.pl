@@ -157,7 +157,7 @@ while (!$quit) {
     if ($new_time - $time > 0.02) {
         $display_surface->draw_rect($screen_rect, $bg_fill_color);
 
-        my ($ch_pos_x, $ch_pos_y) = ($ch->get_pos_x, $ch->get_pos_y);
+        my ($ch_pos_x, $ch_pos_y) = @{$ch->pos}[0..1];
 
         my $map_offset_x = do {
             if ($ch_pos_x < $screen_w/2 || $screen_w >= $max_x) {
