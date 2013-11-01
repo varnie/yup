@@ -42,21 +42,21 @@ my $tiles_surface = TextureManager->instance->get('TILES');
 
 my $sky_surface = TextureManager->instance->get('CLOUDS');
 $sky_surface = SDL::Video::display_format($sky_surface);
-croak(SDL::get_error) unless( $sky_surface);
+croak(SDL::get_error) unless $sky_surface;
 
 my $trees_surface = TextureManager->instance->get('FOREST');
 $trees_surface = SDL::Video::display_format($trees_surface);
-croak(SDL::get_error) unless( $trees_surface);
+croak(SDL::get_error) unless $trees_surface;
 
 my $mountains_surface = TextureManager->instance->get('MOUNTAINS');
 
 my $m_surface_new = SDLx::Surface->new(width => $mountains_surface->w, height => $mountains_surface->h, flags => SDL_ANYFORMAT & ~(SDL_SRCALPHA));
-croak(SDL::get_error) unless ($m_surface_new);
+croak(SDL::get_error) unless $m_surface_new;
 croak(SDL::get_error) if SDL::Video::set_color_key($m_surface_new, SDL_SRCCOLORKEY | SDL_RLEACCEL, SDL::Video::map_RGB($m_surface_new->format, 0xf1, 0xcb, 0x86));
 SDL::Video::blit_surface($mountains_surface, undef, $m_surface_new, undef);
 
 $mountains_surface = SDL::Video::display_format($m_surface_new);
-croak(SDL::get_error) unless ( $mountains_surface);
+croak(SDL::get_error) unless $mountains_surface;
 
 
 my ($map_ref, $max_x, $max_y) = create_map();
@@ -66,7 +66,7 @@ my $map_animated_sprites_ref = create_animated_sprites_map();
 my %map_animated_sprites = %$map_animated_sprites_ref;
 
 my $whole_map_surface = SDLx::Surface->new(width => $max_x, height => $max_y, flags => SDL_ANYFORMAT & ~(SDL_SRCALPHA));
-croak(SDL::get_error) unless ($whole_map_surface);
+croak(SDL::get_error) unless $whole_map_surface;
 croak(SDL::get_error) if SDL::Video::set_color_key($whole_map_surface, SDL_SRCCOLORKEY | SDL_RLEACCEL,  0);
 
 my $tile_rect = [0, 0, 32, 32];
@@ -80,7 +80,7 @@ foreach my $x (0..($max_x/32)-1) {
 }
 
 $whole_map_surface = SDL::Video::display_format($whole_map_surface);
-croak(SDL::get_error) unless ($whole_map_surface);
+croak(SDL::get_error) unless $whole_map_surface;
 
 croak(SDL::get_error) if SDL::Video::flip($whole_map_surface);
 #SDL::Video::save_BMP($whole_map_surface, "foo.bmp");
@@ -198,7 +198,7 @@ while (!$quit) {
 
             while ($len < $screen_w) {
                 my $cur_len = $sky_surface->w - $sky_offset;
-                $cur_len = $screen_w-$x unless ($x+$cur_len <= $screen_w);
+                $cur_len = $screen_w-$x unless $x+$cur_len <= $screen_w;
                 $display_surface->blit_by($sky_surface, [$sky_offset, $offs, $cur_len, $sky_surface_h-$offs], [$x, 0, $cur_len, $sky_surface_h-$offs]);
 
                 $sky_offset = 0;
@@ -217,7 +217,7 @@ while (!$quit) {
 
             while ($len < $screen_w) {
                 my $cur_len = $trees_surface->w - $trees_offset;
-                $cur_len = $screen_w-$x unless ($x+$cur_len <= $screen_w);
+                $cur_len = $screen_w-$x unless $x+$cur_len <= $screen_w;
                 $display_surface->blit_by($trees_surface, [$trees_offset, 0, $cur_len, $trees_offset_h], [$x, $screen_h-$trees_surface->h+$trees_h, $cur_len, $trees_offset_h]);
                 $trees_offset = 0;
                 $len += $cur_len;
@@ -244,7 +244,7 @@ while (!$quit) {
 
             while ($len < $screen_w) {
                 my $cur_len = $mountains_surface->w - $mountains_offset;
-                $cur_len = $screen_w-$x unless ($x+$cur_len <= $screen_w);
+                $cur_len = $screen_w-$x unless $x+$cur_len <= $screen_w;
                 $display_surface->blit_by($mountains_surface, [$mountains_offset, 0, $cur_len, $mountains_surface_h], [$x, $offs, $cur_len, $mountains_surface_h]);
                 $mountains_offset = 0;
                 $len += $cur_len;
