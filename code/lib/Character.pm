@@ -64,7 +64,7 @@ default => 0
 has step_x_speed => (
 is => 'rw',
 isa => 'Num',
-default => 2.8
+default => 3.8
 );
 
 has pos => (
