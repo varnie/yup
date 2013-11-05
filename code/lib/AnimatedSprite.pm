@@ -26,7 +26,6 @@ has sprites_count => (
 has sprite_index => (
     is => 'ro',
     isa => 'Num',
-    lazy => 1,
     default => sub { return int rand shift->sprites_count; }
 );
 
