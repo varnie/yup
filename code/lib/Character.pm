@@ -4,135 +4,128 @@ use strict;
 use warnings;
 use 5.010;
 
-use Mouse;
 use Time::HiRes;
 
+use Mouse;
 use TextureManager;
 
+use Entity;
+extends 'Entity';
+
 use constant {
-LOOK_AT_RIGHT => 0,
-LOOK_AT_LEFT => 1,
-LOOK_AT_ME => 2
+    LOOK_AT_RIGHT => 0,
+    LOOK_AT_LEFT => 1,
+    LOOK_AT_ME => 2
 };
 
+#new attribute
 has look_sprites => (
-is => 'rw',
-isa => 'ArrayRef[ArrayRef[Num]]',
-default => sub {[ [0, 32*2, 32, 32], [0, 32, 32, 32], [32, 0, 32, 32] ]}
+    is => 'rw',
+    isa => 'ArrayRef[ArrayRef[Num]]',
+    default => sub {[ [0, 32*2, 32, 32], [0, 32, 32, 32], [32, 0, 32, 32] ]}
 );
 
+#new attribute
 has map_pos => (
-is => 'rw',
-isa => 'ArrayRef[Num]',
-default => sub{ [0, 0, 32, 32] }
+    is => 'rw',
+    isa => 'ArrayRef[Num]',
+    default => sub{ [0, 0, 32, 32] }
 );
 
+#new attribute
 has velocity => (
-is => 'rw',
-isa => 'Num',
-default => 6,
-required => 1
+    is => 'rw',
+    isa => 'Num',
+    default => 6,
+    required => 1
 );
 
-has sprites => (
-is => 'ro',
-isa => 'SDL::Surface',
-lazy => 1,
-builder => '_build_sprites',
-init_arg => undef
-);
-
-has sprite_index => (
-is => 'ro',
-isa => 'Num',
-default => 0
-);
-
-has sprite_dt => (
-is => 'rw',
-isa => 'Num',
-default => Time::HiRes::time,
-lazy => 1
-);
-
+#new attribute
 has step_x => (
-is => 'rw',
-isa => 'Num',
-default => 0
+    is => 'rw',
+    isa => 'Num',
+    default => 0
 );
 
+#new attribute
 has step_x_speed => (
-is => 'rw',
-isa => 'Num',
-default => 3.8
+    is => 'rw',
+    isa => 'Num',
+    default => 3.8
 );
 
+#new attribute
 has pos => (
-is => 'rw',
-isa => 'ArrayRef[Num]',
-default => sub {[0, 100, 32, 32]}
+    is => 'rw',
+    isa => 'ArrayRef[Num]',
+    default => sub {[0, 100, 32, 32]}
 );
 
-has dt => (
-is => 'rw',
-isa => 'Num',
-default => Time::HiRes::time
-);
-
+#new attribute
 has jump_dt => (
-is => 'rw',
-isa => 'Num',
-default => Time::HiRes::time
+    is => 'rw',
+    isa => 'Num',
+    default => Time::HiRes::time
 );
 
+#new attribute
 has jumping => (
-is => 'rw',
-isa => 'Num',
-default => 0
+    is => 'rw',
+    isa => 'Num',
+    default => 0
 );
 
+#new attribute
 has screen_w => (
-is => 'rw',
-isa => 'Num',
-required => 1
+    is => 'rw',
+    isa => 'Num',
+    required => 1
 );
 
+#new attribute
 has screen_h => (
-is => 'rw',
-isa => 'Num',
-required => 1
+    is => 'rw',
+    isa => 'Num',
+    required => 1
 );
 
+#new attribute
 has map_width => (
-is => 'rw',
-isa => 'Num',
-required => 1
+    is => 'rw',
+    isa => 'Num',
+    required => 1
 );
 
+#new attribute
 has map_height => (
-is => 'rw',
-isa => 'Num',
-required => 1
+    is => 'rw',
+    isa => 'Num',
+    required => 1
 );
 
+#new attribute
 has map_ref => (
-is => 'rw',
-isa => 'HashRef[Num]',
-required => 1
+    is => 'rw',
+    isa => 'HashRef[Num]',
+    required => 1
 );
 
+#new method
 sub get_pos_x {
     return shift->pos->[0];
 }
 
+#new method
 sub get_pos_y {
     return shift->pos->[1];
 }
 
+#new method
 sub reset_velocity {
     shift->velocity(6);
 }
 
+#new method
 sub calc_map_pos {
     my ($self) = @_;
     my ($pos_x, $pos_y) = @{$self->pos}[0..1];
@@ -144,6 +137,7 @@ sub calc_map_pos {
     return $self->map_pos;
 }
 
+#override
 sub draw {
     my ($self, $display_surface_ref) = @_;
     my $src;
@@ -160,6 +154,7 @@ sub draw {
     $display_surface_ref->blit_by($self->sprites, $src, $self->calc_map_pos);
 }
 
+#new method
 sub update_pos {
     my ($self, $new_dt) = @_;
     my ($x, $y) = @{$self->pos}[0..1];
@@ -249,11 +244,13 @@ sub update_pos {
     }
 }
 
+#new method
 sub is_map_val {
     my $self = shift;
     return exists $self->map_ref->{int($_[0]/32) + int(($self->map_height-$_[1])/32)*96};
 }
 
+#override
 sub update_index {
     my ($self, $new_dt) = @_;
     if ($new_dt - $self->sprite_dt >= 0.1) {
@@ -264,6 +261,7 @@ sub update_index {
     }
 }
 
+#override
 sub _build_sprites {
     return TextureManager->instance->get('MAIN_CHARACTER');
 }
