@@ -18,12 +18,11 @@ use constant TEXTURE_NAMES => do {
 
     {
         WATER => File::Spec->catfile(@dirs, 'tiles', 'waterstrip11.png'),
-        MAIN_CHARACTER =>  File::Spec->catfile(@dirs, 'tiles', 'RE1_Sprites_v1_0_by_DoubleLeggy.png'),
+        'MAIN_CHARACTER@BAD_GUY' => File::Spec->catfile(@dirs, 'tiles', 'RE1_Sprites_v1_0_by_DoubleLeggy.png'),
         TILES => File::Spec->catfile(@dirs, 'tiles', 'JnRTiles.png'),
         CLOUDS => File::Spec->catfile(@dirs, 'tiles', 'cloud_new1.png'),
         MOUNTAINS => File::Spec->catfile(@dirs, 'tiles', 'mountains_new1.png'),
         FOREST => File::Spec->catfile(@dirs, 'tiles', 'forest_new.png'),
-        BAD_GUY => File::Spec->catfile(@dirs, 'tiles', 'RE1_Sprites_v1_0_by_DoubleLeggy.png')
     }
 };
 
@@ -35,14 +34,21 @@ has textures => (
 
 sub get {
     my ($self, $name) = @_;
-    if (exists TEXTURE_NAMES->{$name}) {
-        if (exists $self->{textures}->{$name}) {
-            return $self->{textures}->{$name};
+
+    my ($matched_key) = grep {$_ =~ qr/$name/ } keys TEXTURE_NAMES;
+
+    if ($matched_key) {
+        if (exists $self->{textures}->{$matched_key}) {
+            return $self->{textures}->{$matched_key};
         } else {
-            croak(SDL::get_error) unless return $self->{textures}->{$name} = SDL::Image::load(TEXTURE_NAMES->{$name});
+            my $texture_data = SDL::Image::load(TEXTURE_NAMES->{$matched_key});
+            croak(SDL::get_error) unless $texture_data;
+            $self->{textures}->{$matched_key} = $texture_data;
+
+            return $texture_data;
         }
     } else {
-        croak("Constant `$name` is not declared.");
+        croak("Constant `$name` is not declared and could not be found into the synonyms.");
     }
 };
 
