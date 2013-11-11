@@ -12,18 +12,6 @@ use TextureManager;
 use Entity;
 extends 'Entity';
 
-#override
-has sprite_index => (
-    is => 'ro',
-    isa => 'Num',
-    lazy => 1,
-    builder => '_build_sprite_index'
-);
-
-sub _build_sprite_index {
-    return int rand shift->sprites_count;
-}
-
 #new attribute
 has sprites_count => (
     is => 'rw',

@@ -29,6 +29,7 @@ use File::Spec;
 use Character;
 use AnimatedSprite;
 use TextureManager;
+use BadGuy;
 
 SDL::init(SDL_INIT_VIDEO);
 
@@ -64,6 +65,9 @@ my %map = %$map_ref;
 
 my $map_animated_sprites_ref = create_animated_sprites_map();
 my %map_animated_sprites = %$map_animated_sprites_ref;
+
+my $bad_guys_list_ref = create_bad_guys_list();
+my @bad_guys_list = @$bad_guys_list_ref;
 
 my $whole_map_surface = SDLx::Surface->new(width => $max_x, height => $max_y, flags => SDL_ANYFORMAT & ~(SDL_SRCALPHA));
 croak(SDL::get_error) unless $whole_map_surface;
@@ -181,6 +185,7 @@ while (!$quit) {
 
         my ($len, $x) = (0, 0);
 
+        #####draw everything
         #draw sky
         if ($map_offset_y < $sky_surface->h + $screen_h) {
 
@@ -258,8 +263,6 @@ while (!$quit) {
             $screen_rect);
 
         $new_time = Time::HiRes::time;
-        $ch->update_index($new_time);
-        $ch->update_pos($new_time);
 
         #draw animated tiles
         my $start_x = int($map_offset_x/32);
@@ -278,7 +281,27 @@ while (!$quit) {
             }
         }
 
+        #bad guys draw
+        foreach my $bad_guy (grep {
+                my ($bad_guy_x, $bad_guy_y) = @{$_->pos}[0..1];
+                $bad_guy_x >= $map_offset_x && $bad_guy_x <= $map_offset_x + $screen_w+32
+                && $bad_guy_y >= $map_offset_y && $bad_guy_y <= $map_offset_y + $screen_h+32
+            } @bad_guys_list
+        ) {
+            $bad_guy->draw($display_surface, $map_offset_x, $map_offset_y);
+        }
+
+        #character draw
         $ch->draw($display_surface);
+
+        #####update everything
+        $ch->update_index($new_time);
+        $ch->update_pos($new_time);
+
+        foreach my $bad_guy (@bad_guys_list) {
+            $bad_guy->update_index($new_time);
+            $bad_guy->update_pos($new_time);
+        }
 
         my $diff = SDL::get_ticks() - $start_ticks;
         if ($FRAME_RATE > $diff) {
@@ -311,6 +334,7 @@ sub create_map {
 
     $result{96*5+1} = 1;
     $result{96*5+7} = 1;
+    $result{96*20 + 95} = 1;
     delete $result{96*2+4};
 
     return (\%result, (1024*3, 768*3));
@@ -319,6 +343,8 @@ sub create_map {
 sub create_animated_sprites_map {
     my %result;
     $result{0} = AnimatedSprite->new(sprites_count => 11);
+    $result{1} = AnimatedSprite->new(sprites_count => 11);
+    $result{96+64} = AnimatedSprite->new(sprites_count => 11);
     $result{96+64} = AnimatedSprite->new(sprites_count => 11);
     $result{96+65} = AnimatedSprite->new(sprites_count => 11);
     #$result{10} = AnimatedSprite->new(sprites_count => 11);
@@ -326,4 +352,21 @@ sub create_animated_sprites_map {
     #$result{96*22+60} = AnimatedSprite->new(sprites_count => 11);
     #$result{96*28} = AnimatedSprite->new(sprites_count => 11);
     return \%result;
+}
+
+sub create_bad_guys_list {
+    my @result;
+    push @result, BadGuy->new(
+        screen_w => $screen_w,
+        screen_h => $screen_h,
+        map_width => $max_x,
+        map_height => $max_y,
+        map_ref => $map_ref,
+        jumping => 1,
+        velocity => 0,
+        step_x => 1,
+        #pos => [0, 850, 32, 32]
+    );
+
+    return \@result;
 }

@@ -22,7 +22,8 @@ use constant TEXTURE_NAMES => do {
         TILES => File::Spec->catfile(@dirs, 'tiles', 'JnRTiles.png'),
         CLOUDS => File::Spec->catfile(@dirs, 'tiles', 'cloud_new1.png'),
         MOUNTAINS => File::Spec->catfile(@dirs, 'tiles', 'mountains_new1.png'),
-        FOREST => File::Spec->catfile(@dirs, 'tiles', 'forest_new.png')
+        FOREST => File::Spec->catfile(@dirs, 'tiles', 'forest_new.png'),
+        BAD_GUY => File::Spec->catfile(@dirs, 'tiles', 'RE1_Sprites_v1_0_by_DoubleLeggy.png')
     }
 };
 

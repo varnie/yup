@@ -1,10 +1,8 @@
-package Character;
+package BadGuy;
 
 use strict;
 use warnings;
 use 5.010;
-
-use Time::HiRes;
 
 use Mouse;
 use TextureManager;
@@ -19,6 +17,13 @@ use constant {
     LOOK_AT_LEFT => 1,
     LOOK_AT_ME => 2
 };
+
+#new attribute
+has look_sprites => (
+    is => 'rw',
+    isa => 'ArrayRef[ArrayRef[Num]]',
+    default => sub {[ [32*6, 32*2, 32, 32], [0, 32, 32, 32], [32*6, 0, 32, 32] ]}
+);
 
 #new attribute
 has map_pos => (
@@ -62,38 +67,25 @@ has map_ref => (
     required => 1
 );
 
-#new method
-sub reset_velocity {
-    shift->velocity(6);
-}
-
-#new method
-sub calc_map_pos {
-    my ($self) = @_;
-    my ($pos_x, $pos_y) = @{$self->pos}[0..1];
-    my $x = (($pos_x < $self->screen_w/2) || ($self->screen_w >= $self->map_width)) ? $pos_x : $pos_x - $self->screen_w/2 > $self->map_width - $self->screen_w ? $pos_x - ($self->map_width - $self->screen_w) : $self->screen_w/2;
-
-    my $y = (($pos_y < $self->screen_h/2) || ($self->screen_h >= $self->map_height)) ? $pos_y : $pos_y - $self->screen_h/2 > $self->map_height - $self->screen_h ? $pos_y - ($self->map_height - $self->screen_h) : $self->screen_h/2;
-
-    @{$self->map_pos}[0..1] = ($x, $y);
-    return $self->map_pos;
-}
-
 #override
 sub draw {
-    my ($self, $display_surface_ref) = @_;
+    my ($self, $display_surface_ref, $map_offset_x, $map_offset_y) = @_;
     my $src;
     if ($self->step_x > 0) {
         $src = $self->look_sprites->[LOOK_AT_RIGHT];
-        $src->[0] = 32*$self->sprite_index;
+        $src->[0] = 32*6+32*$self->sprite_index;
     } elsif ($self->step_x < 0) {
         $src = $self->look_sprites->[LOOK_AT_LEFT];
-        $src->[0] = 32*$self->sprite_index;
+        $src->[0] = 32*6+32*$self->sprite_index;
     } else {
         $src = $self->look_sprites->[LOOK_AT_ME];
     }
 
-    $display_surface_ref->blit_by($self->sprites, $src, $self->calc_map_pos);
+    $display_surface_ref->blit_by($self->sprites, $src,
+        [$self->pos->[0]-$map_offset_x,
+         $self->pos->[1]-$map_offset_y,
+         32,
+         32]);
 }
 
 #override Movable method
@@ -206,9 +198,9 @@ sub update_index {
 
 #override
 sub _build_sprites {
-    return TextureManager->instance->get('MAIN_CHARACTER');
+    return TextureManager->instance->get('BAD_GUY');
 }
 
 no Mouse;
 __PACKAGE__->meta->make_immutable;
-1 ;
+1;

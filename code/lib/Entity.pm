@@ -17,7 +17,9 @@ has sprites => (
 has sprite_index => (
     is => 'ro',
     isa => 'Num',
-    default => 0
+    lazy => 1,
+    default => 0,
+    required => 1
 );
 
 has sprite_dt => (
