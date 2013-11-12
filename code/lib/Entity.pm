@@ -35,6 +35,16 @@ has dt => (
     default => Time::HiRes::time
 );
 
+has map_pos => (
+    is => 'rw',
+    isa => 'ArrayRef[Num]',
+    default => sub{ [0, 0, 32, 32] }
+);
+
+sub calc_map_pos {
+    confess shift, "should have defined `calc_map_pos`";
+}
+
 sub draw {
     confess shift, "should have defined `draw`";
 }

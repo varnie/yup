@@ -21,13 +21,6 @@ use constant {
 };
 
 #new attribute
-has map_pos => (
-    is => 'rw',
-    isa => 'ArrayRef[Num]',
-    default => sub{ [0, 0, 32, 32] }
-);
-
-#new attribute
 has screen_w => (
     is => 'rw',
     isa => 'Num',
@@ -67,7 +60,7 @@ sub reset_velocity {
     shift->velocity(6);
 }
 
-#new method
+#override Entity method
 sub calc_map_pos {
     my ($self) = @_;
     my ($pos_x, $pos_y) = @{$self->pos}[0..1];
@@ -82,16 +75,19 @@ sub calc_map_pos {
 #override
 sub draw {
     my ($self, $display_surface_ref) = @_;
-    my $src;
-    if ($self->step_x > 0) {
-        $src = $self->look_sprites->[LOOK_AT_RIGHT];
-        $src->[0] = 32*$self->sprite_index;
-    } elsif ($self->step_x < 0) {
-        $src = $self->look_sprites->[LOOK_AT_LEFT];
-        $src->[0] = 32*$self->sprite_index;
-    } else {
-        $src = $self->look_sprites->[LOOK_AT_ME];
-    }
+    my $src = do {
+        if ($self->step_x > 0) {
+            my $pattern = $self->look_sprites->[LOOK_AT_RIGHT];
+            $pattern->[0] = 32*$self->sprite_index;
+            $pattern;
+        } elsif ($self->step_x < 0) {
+            my $pattern = $self->look_sprites->[LOOK_AT_LEFT];
+            $pattern->[0] = 32*$self->sprite_index;
+            $pattern;
+        } else {
+            $self->look_sprites->[LOOK_AT_ME];
+        }
+    };
 
     $display_surface_ref->blit_by($self->sprites, $src, $self->calc_map_pos);
 }

@@ -18,19 +18,13 @@ use constant {
     LOOK_AT_ME => 2
 };
 
-#new attribute
+#override Movable attribute
 has look_sprites => (
     is => 'rw',
     isa => 'ArrayRef[ArrayRef[Num]]',
     default => sub {[ [32*6, 32*2, 32, 32], [0, 32, 32, 32], [32*6, 0, 32, 32] ]}
 );
 
-#new attribute
-has map_pos => (
-    is => 'rw',
-    isa => 'ArrayRef[Num]',
-    default => sub{ [0, 0, 32, 32] }
-);
 
 #new attribute
 has screen_w => (
@@ -67,25 +61,33 @@ has map_ref => (
     required => 1
 );
 
+#override Entity method
+sub calc_map_pos {
+    my ($self, $map_offset_x, $map_offset_y) = @_;
+    my ($pos_x, $pos_y) = @{$self->pos}[0..1];
+
+    @{$self->map_pos}[0..1] = ($pos_x-$map_offset_x, $pos_y-$map_offset_y);
+    return $self->map_pos;
+}
+
 #override
 sub draw {
     my ($self, $display_surface_ref, $map_offset_x, $map_offset_y) = @_;
-    my $src;
-    if ($self->step_x > 0) {
-        $src = $self->look_sprites->[LOOK_AT_RIGHT];
-        $src->[0] = 32*6+32*$self->sprite_index;
-    } elsif ($self->step_x < 0) {
-        $src = $self->look_sprites->[LOOK_AT_LEFT];
-        $src->[0] = 32*6+32*$self->sprite_index;
-    } else {
-        $src = $self->look_sprites->[LOOK_AT_ME];
-    }
+    my $src = do {
+        if ($self->step_x > 0) {
+            my $pattern = $self->look_sprites->[LOOK_AT_RIGHT];
+            $pattern->[0] = 32*6+32*$self->sprite_index;
+            $pattern;
+        } elsif ($self->step_x < 0) {
+            my $pattern = $self->look_sprites->[LOOK_AT_LEFT];
+            $pattern->[0] = 32*6+32*$self->sprite_index;
+            $pattern;
+        } else {
+            $self->look_sprites->[LOOK_AT_ME];
+        }
+    };
 
-    $display_surface_ref->blit_by($self->sprites, $src,
-        [$self->pos->[0]-$map_offset_x,
-         $self->pos->[1]-$map_offset_y,
-         32,
-         32]);
+    $display_surface_ref->blit_by($self->sprites, $src, $self->calc_map_pos($map_offset_x, $map_offset_y));
 }
 
 #override Movable method
