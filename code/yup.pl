@@ -318,7 +318,7 @@ while (!$quit) {
 
         $text_obj->write_to($display_surface, "FPS: $FPS");
 
-        $display_surface->update;
+        $display_surface->flip;
     }
 }
 
