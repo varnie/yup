@@ -238,10 +238,8 @@ while (!$quit) {
             my $offs = do {
                 if ($map_offset_y+$screen_h >= $max_y) {
                     $screen_h-$trees_surface->h-$mountains_surface->h;
-                } elsif ($map_offset_y+$screen_h >= $max_y-$trees_surface->h) {
-                    $screen_h - ($map_offset_y+$screen_h - ($max_y-($mountains_surface->h+$trees_surface->h)));
                 } else {
-                    $screen_h - ($mountains_surface->h - ($max_y - ($map_offset_y+$screen_h)));
+                    $max_y-$map_offset_y-$mountains_surface->h-$trees_surface->h;
                 }
             };
 
