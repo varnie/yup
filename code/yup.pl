@@ -101,7 +101,8 @@ my ($ch, $e, $quit, $time, $aux_time, $FPS, $show_FPS) = (
         map_height => $max_y,
         map_ref => $map_ref,
         jumping => 1,
-        velocity => 0
+        velocity => 0,
+        pos => [1800, 850, 32, 32]
     ),
     SDL::Event->new,
     0,
@@ -285,8 +286,8 @@ while (!$quit) {
         #bad guys draw
         foreach my $bad_guy (grep {
                 my ($bad_guy_x, $bad_guy_y) = @{$_->pos}[0..1];
-                $bad_guy_x >= $map_offset_x && $bad_guy_x <= $map_offset_x + $screen_w+32
-                && $bad_guy_y >= $map_offset_y && $bad_guy_y <= $map_offset_y + $screen_h+32
+                $bad_guy_x >= $map_offset_x-32 && $bad_guy_x <= $map_offset_x + $screen_w+32
+                && $bad_guy_y >= $map_offset_y-32 && $bad_guy_y <= $map_offset_y + $screen_h+32
             } @bad_guys_list
         ) {
             $bad_guy->draw($display_surface, $map_offset_x, $map_offset_y);
@@ -366,8 +367,8 @@ sub create_bad_guys_list {
         map_ref => $map_ref,
         jumping => 1,
         velocity => 0,
-        step_x => 1,
-        #pos => [0, 850, 32, 32]
+        step_x => -1,
+        pos => [2900, 850, 32, 32]
     );
 
     return \@result;
