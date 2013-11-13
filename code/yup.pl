@@ -93,7 +93,7 @@ croak(SDL::get_error) if SDL::Video::flip($whole_map_surface);
 #say ((scalar keys %map) / 24);
 #test
 
-my ($ch, $e, $quit, $time, $aux_time, $FPS) = (
+my ($ch, $e, $quit, $time, $aux_time, $FPS, $show_FPS) = (
     Character->new(
         screen_w => $screen_w,
         screen_h => $screen_h,
@@ -107,6 +107,7 @@ my ($ch, $e, $quit, $time, $aux_time, $FPS) = (
     0,
     Time::HiRes::time,
     Time::HiRes::time,
+    0,
     0
 );
 
@@ -310,13 +311,14 @@ while (!$quit) {
 
         $time = $new_time;
         if ($diff > 0) {
-            if ($new_time - $aux_time > 5) {
+            if ($new_time - $aux_time > 2) {
                 $FPS = int((++$frames_cnt/$diff)*1000);
                 $aux_time = $new_time;
+                $show_FPS = 1;
             }
         }
 
-        $text_obj->write_to($display_surface, "FPS: $FPS");
+        $text_obj->write_to($display_surface, "FPS: $FPS") if $show_FPS;
 
         $display_surface->flip;
     }
