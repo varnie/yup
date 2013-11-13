@@ -106,12 +106,16 @@ sub update_pos {
                         $self->pos->[0] = $x = $new_x;
                     } else {
                         $self->pos->[0] = $x = 32*(int($new_x/32));
+                        #change x direction
+                        $self->step_x(-1);
                     }
                 } else {
                     if (!$self->is_map_val($new_x, $y+($self->jumping ? 0 : 32))) {
                         $self->pos->[0] = $x = $new_x;
                     } else {
                         $self->pos->[0] = $x = 32*(int($new_x/32)+1);
+                        #change x direction
+                        $self->step_x(1);
                     }
                 }
             }

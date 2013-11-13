@@ -338,6 +338,7 @@ sub create_map {
     $result{96*5+1} = 1;
     $result{96*5+7} = 1;
     $result{96*20 + 95} = 1;
+    $result{96*20 + 20} = 1;
     delete $result{96*2+4};
 
     return (\%result, (1024*3, 768*3));
