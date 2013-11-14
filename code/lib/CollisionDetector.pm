@@ -4,9 +4,6 @@ use strict;
 use warnings;
 use 5.010;
 
-use List::Util qw/first/;
-use List::MoreUtils qw/any/;
-
 use Mouse;
 use base 'Class::Singleton';
 
