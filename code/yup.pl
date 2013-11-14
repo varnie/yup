@@ -30,6 +30,7 @@ use Character;
 use AnimatedSprite;
 use TextureManager;
 use BadGuy;
+use CollisionDetector;
 
 SDL::init(SDL_INIT_VIDEO);
 
@@ -42,12 +43,8 @@ my $display_surface = SDLx::Surface->new(surface => $display);
 my $tiles_surface = TextureManager->instance->get('TILES');
 
 my $sky_surface = TextureManager->instance->get('CLOUDS');
-$sky_surface = SDL::Video::display_format($sky_surface);
-croak(SDL::get_error) unless $sky_surface;
 
 my $trees_surface = TextureManager->instance->get('FOREST');
-$trees_surface = SDL::Video::display_format($trees_surface);
-croak(SDL::get_error) unless $trees_surface;
 
 my $mountains_surface = TextureManager->instance->get('MOUNTAINS');
 
@@ -68,6 +65,7 @@ my %map_animated_sprites = %$map_animated_sprites_ref;
 
 my $bad_guys_list_ref = create_bad_guys_list();
 my @bad_guys_list = @$bad_guys_list_ref;
+CollisionDetector->instance(bad_guys_list => $bad_guys_list_ref);
 
 my $whole_map_surface = SDLx::Surface->new(width => $max_x, height => $max_y, flags => SDL_ANYFORMAT & ~(SDL_SRCALPHA));
 croak(SDL::get_error) unless $whole_map_surface;
@@ -102,7 +100,7 @@ my ($ch, $e, $quit, $time, $aux_time, $FPS, $show_FPS) = (
         map_ref => $map_ref,
         jumping => 1,
         velocity => 0,
-        pos => [1800, 850, 32, 32]
+        pos => [204, 2080, 32, 32]
     ),
     SDL::Event->new,
     0,
@@ -121,6 +119,10 @@ my @dirs = File::Spec->splitdir(File::Spec->rel2abs(__FILE__));
 my $text_obj = SDLx::Text->new(font => File::Spec->catfile(@dirs, 'fonts', 'FreeSerif.ttf'),
     x => 10,
     y => 10);
+
+my $debug_text_obj = SDLx::Text->new(font => File::Spec->catfile(@dirs, 'fonts', 'FreeSerif.ttf'),
+    x => 10,
+    y => 40);
 
 my $screen_rect = [0, 0, $screen_w, $screen_h];
 
@@ -303,6 +305,14 @@ while (!$quit) {
             $bad_guy->update_pos($new_time);
         }
 
+        my $bang = 0;
+        if (CollisionDetector->instance->intersect($ch->pos)) {
+            $ch->handle_collision;
+            $bang = 1;
+        }
+
+        $debug_text_obj->write_to($display_surface, "bang: " . ($bang ? "YES" : "NO"));
+
         my $diff = SDL::get_ticks() - $start_ticks;
         if ($FRAME_RATE > $diff) {
             SDL::delay(int($FRAME_RATE-$diff));
@@ -366,9 +376,25 @@ sub create_bad_guys_list {
         map_ref => $map_ref,
         jumping => 1,
         velocity => 0,
-        step_x => -1,
-        pos => [2900, 850, 32, 32]
+        step_x => 0,
+        pos => [1800, 850, 32, 32]
     );
-
+    for (1..100) {       
+        my $step_x = do {
+            my $rand = int(rand(3));
+            $rand == 0 ? -1 : $rand == 1 ? 0 : 1;    
+        };
+        push @result, BadGuy->new(
+            screen_w => $screen_w,
+            screen_h => $screen_h,
+            map_width => $max_x,
+            map_height => $max_y,
+            map_ref => $map_ref,
+            jumping => 1,
+            velocity => 0,
+            step_x => $step_x,
+            pos => [int(rand(1024*3)), int(rand(1024*2)), 32, 32]
+        );
+    }
     return \@result;
 }

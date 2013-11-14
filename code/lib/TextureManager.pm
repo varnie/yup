@@ -11,6 +11,7 @@ use File::Spec;
 use Carp qw/croak/;
 
 use SDL::Image;
+use SDL::Video;
 
 use constant TEXTURE_NAMES => do {
     my @dirs = File::Spec->splitdir(File::Spec->rel2abs(__FILE__));
@@ -43,6 +44,12 @@ sub get {
         } else {
             my $texture_data = SDL::Image::load(TEXTURE_NAMES->{$matched_key});
             croak(SDL::get_error) unless $texture_data;
+            $texture_data = SDL::Video::display_format($texture_data);
+            croak(SDL::get_error) unless $texture_data;
+            if ($name eq 'BAD_GUY') {
+                croak(SDL::get_error) if SDL::Video::set_color_key($texture_data, SDL_SRCCOLORKEY
+                    , SDL::Video::map_RGB($texture_data->format, 0xFF, 0xFF, 0xFF));
+            }
             $self->{textures}->{$matched_key} = $texture_data;
 
             return $texture_data;

@@ -8,7 +8,9 @@ use Time::HiRes;
 
 use Mouse;
 use TextureManager;
+use CollisionDetector;
 
+use SDL::Video;
 use Entity;
 use Movable;
 use Jumpable;
@@ -92,6 +94,47 @@ sub draw {
     $display_surface_ref->blit_by($self->sprites, $src, $self->calc_map_pos);
 }
 
+#new method
+sub handle_collision {
+    my ($self) = @_;
+    my $sprites = $self->sprites;
+
+    #SDL::Video::set_alpha($self->sprites, SDL_RLEACCEL | SDL_SRCALPHA, 128);
+    if (SDL::Video::MUSTLOCK($sprites)) {
+        SDL::Video::lock_surface($sprites);
+    }
+
+    my $width = $sprites->pitch/4;
+
+    my $R_mask = $sprites->format->Rmask;
+    #my $G_mask = $sprites->format->Gmask;
+    #my $B_mask = $sprites->format->Bmask;
+
+    foreach my $look_sprites (@{$self->look_sprites}) {
+        my $base = $look_sprites->[1]*$width;
+        my $cur = $base;
+        foreach my $y (0..32) {
+            my $index = ($cur += $width);
+            foreach my $x (0..32*3) {
+                my $val = $sprites->get_pixel(++$index);
+
+                if ($val != 0xFFFFFF) {
+
+                    my $r = $val & $R_mask;
+                    #my $g = ($val & $G_mask);
+                    #my $b = ($val & $B_mask);
+
+                    $sprites->set_pixels($index, ($r < $R_mask ? ($r+0x10000) : $r)+($val-$r));
+                }
+            }
+        }
+    }
+
+    if (SDL::Video::MUSTLOCK($sprites)) {
+        SDL::Video::unlock_surface($sprites);
+    }
+}
+
 #override Movable method
 sub update_pos {
     my ($self, $new_dt) = @_;
@@ -168,7 +211,7 @@ sub update_pos {
                 $self->jumping(0);
             } else {
 
-                my $new_velocity = $self->velocity - 3.6*($new_dt - $self->jump_dt);
+                my $new_velocity = $self->velocity - 2.2*($new_dt - $self->jump_dt);
                 $new_velocity = 0 if $new_velocity < 0;
 
                 my $new_y = $y - $new_velocity;

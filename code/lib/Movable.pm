@@ -10,7 +10,7 @@ use Mouse;
 has look_sprites => (
     is => 'rw',
     isa => 'ArrayRef[ArrayRef[Num]]',
-    default => sub {[ [0, 32*2, 32, 32], [0, 32, 32, 32], [32, 0, 32, 32] ]}
+    default => sub {[ [0, 32*2, 32, 32], [0, 32, 32, 32], [0, 0, 32, 32] ]}
 );
 
 #new attribute
