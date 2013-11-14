@@ -140,8 +140,12 @@ while (!$quit) {
             if ($key_sym == SDLK_ESCAPE) {
                 $quit = 1;
             } elsif ($key_sym == SDLK_RIGHT) {
+                $ch->move_key_hold(1);
+                $ch->key_hold_start_time(Time::HiRes::time);
                 $ch->step_x(1);
             } elsif ($key_sym == SDLK_LEFT) {
+                $ch->move_key_hold(1);
+                $ch->key_hold_start_time(Time::HiRes::time);
                 $ch->step_x(-1);
             } elsif ($key_sym == SDLK_UP) {
                 if (!$ch->jumping) {
@@ -154,6 +158,7 @@ while (!$quit) {
             my $key_sym = $e->key_sym;
             if (($key_sym == SDLK_RIGHT && $ch->step_x == 1) || ($key_sym == SDLK_LEFT && $ch->step_x == -1)) {
                 $ch->step_x(0);
+                $ch->move_key_hold(0);
             }
         }
     }

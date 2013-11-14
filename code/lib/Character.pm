@@ -57,6 +57,20 @@ has map_ref => (
     required => 1
 );
 
+#new attribute
+has move_key_hold => (
+    is => 'rw',
+    isa => 'Num',
+    default => 0
+);
+
+#new attribute
+has key_hold_start_time => (
+    is => 'rw',
+    isa => 'Num',
+    default => 0
+);
+
 #new method
 sub reset_velocity {
     shift->velocity(6);
@@ -142,6 +156,11 @@ sub update_pos {
 
     if ($self->step_x != 0) {
         my $new_x = $x + $self->step_x_speed*$self->step_x;
+        if ($self->move_key_hold) {
+            my $add_x = $new_dt - $self->key_hold_start_time;
+            $add_x = 5 if $add_x > 5;
+            $new_x += $self->step_x*$add_x;
+        }
         if ($new_x >= 0 && $new_x <= $self->map_width-32) {
 
             if (!($self->jumping && $y % 32 == 0 && $self->is_map_val($x, $y) && $self->is_map_val($x, $y-1) && $self->is_map_val($x+32, $y))) {
