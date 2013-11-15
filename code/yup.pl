@@ -100,7 +100,7 @@ my ($ch, $e, $quit, $time, $aux_time, $FPS, $show_FPS) = (
         map_ref => $map_ref,
         jumping => 1,
         velocity => 0,
-        pos => [204, 2080, 32, 32]
+        pos => [1800, 250, 32, 32]
     ),
     SDL::Event->new,
     0,
@@ -143,10 +143,12 @@ while (!$quit) {
                 $ch->move_key_hold(1);
                 $ch->key_hold_start_time(Time::HiRes::time);
                 $ch->step_x(1);
+                $ch->slide(0);
             } elsif ($key_sym == SDLK_LEFT) {
                 $ch->move_key_hold(1);
                 $ch->key_hold_start_time(Time::HiRes::time);
                 $ch->step_x(-1);
+                $ch->slide(0);
             } elsif ($key_sym == SDLK_UP) {
                 if (!$ch->jumping) {
                     $ch->reset_velocity;
@@ -157,8 +159,10 @@ while (!$quit) {
         } elsif ($e->type == SDL_KEYUP) {
             my $key_sym = $e->key_sym;
             if (($key_sym == SDLK_RIGHT && $ch->step_x == 1) || ($key_sym == SDLK_LEFT && $ch->step_x == -1)) {
+                $ch->slide($ch->step_x);
                 $ch->step_x(0);
                 $ch->move_key_hold(0);
+                $ch->key_hold_start_time(Time::HiRes::time);
             }
         }
     }
@@ -353,6 +357,7 @@ sub create_map {
     $result{96*20 + 95} = 1;
     $result{96*20 + 20} = 1;
     delete $result{96*2+4};
+    delete $result{96*19+39};
 
     return (\%result, (1024*3, 768*3));
 }
@@ -384,10 +389,10 @@ sub create_bad_guys_list {
         step_x => 0,
         pos => [1800, 850, 32, 32]
     );
-    for (1..100) {       
+    for (1..100) {
         my $step_x = do {
             my $rand = int(rand(3));
-            $rand == 0 ? -1 : $rand == 1 ? 0 : 1;    
+            $rand == 0 ? -1 : $rand == 1 ? 0 : 1;
         };
         push @result, BadGuy->new(
             screen_w => $screen_w,

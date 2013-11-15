@@ -71,6 +71,20 @@ has key_hold_start_time => (
     default => 0
 );
 
+#new attribute
+has slide => (
+    is => 'rw',
+    isa => 'Num',
+    default => 0
+);
+
+#new attribute
+has aux => (
+    is => 'rw',
+    isa => 'Num',
+    default => 0
+);
+
 #new method
 sub reset_velocity {
     shift->velocity(6);
@@ -92,16 +106,14 @@ sub calc_map_pos {
 sub draw {
     my ($self, $display_surface_ref) = @_;
     my $src = do {
-        if ($self->step_x > 0) {
-            my $pattern = $self->look_sprites->[LOOK_AT_RIGHT];
+        if ($self->step_x) {
+            my $pattern = $self->look_sprites->[$self->step_x == 1 ? LOOK_AT_RIGHT : LOOK_AT_LEFT];
             $pattern->[0] = 32*$self->sprite_index;
             $pattern;
-        } elsif ($self->step_x < 0) {
-            my $pattern = $self->look_sprites->[LOOK_AT_LEFT];
-            $pattern->[0] = 32*$self->sprite_index;
-            $pattern;
-        } else {
+        } elsif (!$self->slide) {
             $self->look_sprites->[LOOK_AT_ME];
+        } else {
+            $self->look_sprites->[$self->slide == 1 ? LOOK_AT_RIGHT : LOOK_AT_LEFT];
         }
     };
 
@@ -113,7 +125,6 @@ sub handle_collision {
     my ($self) = @_;
     my $sprites = $self->sprites;
 
-    #SDL::Video::set_alpha($self->sprites, SDL_RLEACCEL | SDL_SRCALPHA, 128);
     if (SDL::Video::MUSTLOCK($sprites)) {
         SDL::Video::lock_surface($sprites);
     }
@@ -154,24 +165,36 @@ sub update_pos {
     my ($self, $new_dt) = @_;
     my ($x, $y) = @{$self->pos}[0..1];
 
-    if ($self->step_x != 0) {
-        my $new_x = $x + $self->step_x_speed*$self->step_x;
-        if ($self->move_key_hold) {
-            my $add_x = $new_dt - $self->key_hold_start_time;
-            $add_x = 5 if $add_x > 5;
-            $new_x += $self->step_x*$add_x;
+    if ($self->step_x || $self->slide) {
+        my $new_x = $x;
+
+        if ($self->step_x) {
+            my $add_x = $self->move_key_hold ? ($new_dt - $self->key_hold_start_time)*4 : 0;
+            $add_x = 4 if $add_x > 4;
+            $self->aux($add_x);
+            $new_x += ($self->step_x_speed + $add_x)*$self->step_x;
+        } else {
+            my $new_aux = $self->aux - ($new_dt - $self->key_hold_start_time);
+            if ($new_aux < 0) {
+                $new_aux = 0;
+            } else {
+                $new_x += $self->slide*$new_aux;
+            }
+
+            $self->aux($new_aux);
         }
-        if ($new_x >= 0 && $new_x <= $self->map_width-32) {
+
+        if ($new_x != $x && $new_x >= 0 && $new_x <= $self->map_width-32) {
 
             if (!($self->jumping && $y % 32 == 0 && $self->is_map_val($x, $y) && $self->is_map_val($x, $y-1) && $self->is_map_val($x+32, $y))) {
 
-                if ($self->step_x == 1) {
+                if ($self->step_x == 1 || $self->slide == 1) {
                     if (!$self->is_map_val($new_x+32, $y+($self->jumping ? 0 : 32))) {
                         $self->pos->[0] = $x = $new_x;
                     } else {
                         $self->pos->[0] = $x = 32*(int($new_x/32));
                     }
-                } else {
+                } elsif ($self->step_x == -1 || $self->slide == -1) {
                     if (!$self->is_map_val($new_x, $y+($self->jumping ? 0 : 32))) {
                         $self->pos->[0] = $x = $new_x;
                     } else {
@@ -181,7 +204,8 @@ sub update_pos {
             }
 
             if (!$self->jumping) {
-                if ($self->step_x == 1 && !$self->is_map_val($x+12, $y+64) || $self->step_x == -1 && !$self->is_map_val($x+20, $y+64)) {
+                if ((($self->step_x == 1 || $self->slide == 1) && !$self->is_map_val($x+12, $y+64)) ||
+                    (($self->step_x == -1 || $self->slide == -1) && !$self->is_map_val($x+20, $y+64))) {
 
                     $self->jumping(1);
                     $self->velocity(0);
@@ -189,6 +213,8 @@ sub update_pos {
                 }
             }
         }
+
+        $self->slide(0) if !$self->aux;
     }
 
     if ($self->jumping) {
@@ -201,7 +227,7 @@ sub update_pos {
 
             while ($test_y < $new_y) {
 
-                if ($self->step_x == 0) {
+                if (!$self->step_x && !$self->slide) {
                     if ($self->is_map_val($x, $test_y)) {
                         $self->pos->[0] = $x = (1 + int($x/32)) * 32;
                     } elsif ($self->is_map_val($x+32, $test_y)) {
