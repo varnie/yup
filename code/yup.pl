@@ -65,7 +65,12 @@ my %map_animated_sprites = %$map_animated_sprites_ref;
 
 my $bad_guys_list_ref = create_bad_guys_list();
 my @bad_guys_list = @$bad_guys_list_ref;
-CollisionDetector->instance(bad_guys_list => $bad_guys_list_ref);
+CollisionDetector->instance(
+    map_width => $max_x,
+    map_height => $max_y,
+    bad_guys_list => $bad_guys_list_ref,
+    animated_sprites_list => $map_animated_sprites_ref
+);
 
 my $whole_map_surface = SDLx::Surface->new(width => $max_x, height => $max_y, flags => SDL_ANYFORMAT & ~(SDL_SRCALPHA));
 croak(SDL::get_error) unless $whole_map_surface;
@@ -100,7 +105,7 @@ my ($ch, $e, $quit, $time, $aux_time, $FPS, $show_FPS) = (
         map_ref => $map_ref,
         jumping => 1,
         velocity => 0,
-        pos => [1800, 250, 32, 32]
+        pos => [684+5-32+0.98, 1632-16+10+20.1, 32, 32]
     ),
     SDL::Event->new,
     0,
@@ -315,7 +320,7 @@ while (!$quit) {
         }
 
         my $bang = 0;
-        if (CollisionDetector->instance->intersect($ch->pos)) {
+        if (CollisionDetector->instance->simple_intersect($ch->pos)) {
             $ch->handle_collision;
             $bang = 1;
         }
@@ -355,7 +360,7 @@ sub create_map {
     $result{96*5+1} = 1;
     $result{96*5+7} = 1;
     $result{96*20 + 95} = 1;
-    $result{96*20 + 20} = 1;
+    #$result{96*20 + 20} = 1;
     delete $result{96*2+4};
     delete $result{96*19+39};
 
@@ -364,15 +369,17 @@ sub create_map {
 
 sub create_animated_sprites_map {
     my %result;
-    $result{0} = AnimatedSprite->new(sprites_count => 11);
-    $result{1} = AnimatedSprite->new(sprites_count => 11);
-    $result{96+64} = AnimatedSprite->new(sprites_count => 11);
-    $result{96+64} = AnimatedSprite->new(sprites_count => 11);
-    $result{96+65} = AnimatedSprite->new(sprites_count => 11);
-    #$result{10} = AnimatedSprite->new(sprites_count => 11);
-    $result{96*24+32} = AnimatedSprite->new(sprites_count => 11);
-    #$result{96*22+60} = AnimatedSprite->new(sprites_count => 11);
-    #$result{96*28} = AnimatedSprite->new(sprites_count => 11);
+    #$result{0} = AnimatedSprite->new(sprites_count => 11);
+    #$result{1} = AnimatedSprite->new(sprites_count => 11);
+    $result{96*20+21} = AnimatedSprite->new(sprites_count => 11);
+    $result{96+2} = AnimatedSprite->new(sprites_count => 11);
+    #$result{96+64} = AnimatedSprite->new(sprites_count => 11);
+    #$result{96+64} = AnimatedSprite->new(sprites_count => 11);
+    #$result{96+65} = AnimatedSprite->new(sprites_count => 11);
+    ##$result{10} = AnimatedSprite->new(sprites_count => 11);
+    #$result{96*24+32} = AnimatedSprite->new(sprites_count => 11);
+    ##$result{96*22+60} = AnimatedSprite->new(sprites_count => 11);
+    ##$result{96*28} = AnimatedSprite->new(sprites_count => 11);
     return \%result;
 }
 

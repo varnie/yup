@@ -7,6 +7,9 @@ use 5.010;
 use Mouse;
 use TextureManager;
 
+use CollisionDetector;
+
+use SDL::Video;
 use Entity;
 use Movable;
 use Jumpable;
@@ -25,6 +28,14 @@ has look_sprites => (
     default => sub {[ [32*6, 32*2, 32, 32], [0, 32, 32, 32], [32*6, 0, 32, 32] ]}
 );
 
+#new attribute
+has sprites_overlap => (
+    is => 'ro',
+    isa => 'SDL::Surface',
+    lazy => 1,
+    builder => '_build_sprites_overlap',
+    init_arg => undef
+);
 
 #new attribute
 has screen_w => (
@@ -87,7 +98,147 @@ sub draw {
         }
     };
 
-    $display_surface_ref->blit_by($self->sprites, $src, $self->calc_map_pos($map_offset_x, $map_offset_y));
+    my $bounds = CollisionDetector->instance->strict_intersect_bounds($self->pos);
+    if ($bounds) {
+        my ($bounds_x, $bounds_y, $bounds_width, $bounds_height) = @{$bounds};
+
+        my $map_pos = $self->calc_map_pos($map_offset_x, $map_offset_y);
+        my ($ch_pos_x, $ch_pos_y) = @{$self->pos}[0..1];
+
+        if ($bounds_x == $ch_pos_x && $bounds_y == $ch_pos_y &&
+            $bounds_width == 32 && $bounds_height == 32) {
+
+            #full intersection
+
+            $display_surface_ref->blit_by($self->sprites_overlap, [$src->[0], $src->[1], 32, 32],
+                [$map_pos->[0], $map_pos->[1], 32, 32]);
+
+        } elsif ($bounds_x > $ch_pos_x &&
+            $bounds_y == $ch_pos_y &&
+            $bounds_height == 32) {
+
+            #y axises are equal and character stands lefter the sprite
+
+            #draw remained character's part
+            $display_surface_ref->blit_by($self->sprites, [$src->[0], $src->[1], 32-$bounds_width, 32],
+                [$map_pos->[0], $map_pos->[1], 32-$bounds_width, 32]);
+
+            #draw intersection's part
+            $display_surface_ref->blit_by($self->sprites_overlap, [$src->[0]+32-$bounds_width, $src->[1], $bounds_width, 32],
+                [$map_pos->[0]+32-$bounds_width, $map_pos->[1], $bounds_width, 32]);
+
+        } elsif ($bounds_x < $ch_pos_x+32 &&
+            $bounds_y == $ch_pos_y &&
+            $bounds_height == 32) {
+
+            #y axises are equal and character stands righter the sprite
+
+            #draw remained character's part
+            $display_surface_ref->blit_by($self->sprites,
+                [$src->[0]+$bounds_width, $src->[1], 32-$bounds_width,  32],
+                [$map_pos->[0]+$bounds_width, $map_pos->[1], 32-$bounds_width, 32]);
+
+            #draw intersection's part
+            $display_surface_ref->blit_by($self->sprites_overlap, [$src->[0], $src->[1], $bounds_width, 32],
+                [$map_pos->[0], $map_pos->[1], $bounds_width, 32]);
+
+        } elsif ($bounds_y > $ch_pos_y &&
+            $bounds_x == $ch_pos_x &&
+            $bounds_width == 32) {
+
+            #x axises are equal and character stands upper the sprite
+
+            #draw remained character's part
+            $display_surface_ref->blit_by($self->sprites, [$src->[0], $src->[1], 32, 32-$bounds_height],
+                [$map_pos->[0], $map_pos->[1], 32, 32-$bounds_height]);
+
+            #draw intersection's part
+            $display_surface_ref->blit_by($self->sprites_overlap, [$src->[0], $src->[1]+32-$bounds_height, 32, $bounds_height],
+                [$map_pos->[0], $map_pos->[1]+32-$bounds_height, 32, $bounds_height]);
+
+        } elsif ($bounds_y < $ch_pos_y + 32 &&
+            $bounds_x == $ch_pos_x &&
+            $bounds_width == 32) {
+
+            #x axises are equal and character stands lower the sprite
+
+            #draw remained character's part
+            $display_surface_ref->blit_by($self->sprites, [$src->[0], $src->[1]+$bounds_height, 32, 32-$bounds_height],
+                [$map_pos->[0], $map_pos->[1]+$bounds_height, 32, 32-$bounds_height]);
+
+            #draw intersection's part
+            $display_surface_ref->blit_by($self->sprites_overlap, [$src->[0], $src->[1], 32, $bounds_height],
+                [$map_pos->[0], $map_pos->[1], 32, $bounds_height]);
+
+        } else {
+            #x and y axises are different
+
+            if ($ch_pos_x == $bounds_x &&
+                $ch_pos_y == $bounds_y) {
+
+                #draw intersection's part
+                $display_surface_ref->blit_by($self->sprites_overlap, [$src->[0], $src->[1], $bounds_width, $bounds_height],
+                    [$map_pos->[0], $map_pos->[1], $bounds_width, $bounds_height]);
+
+                #draw remained character's part #1 below the intersection
+                $display_surface_ref->blit_by($self->sprites, [$src->[0], $src->[1]+$bounds_height, $bounds_width, 32-$bounds_height],
+                    [$map_pos->[0], $map_pos->[1]+$bounds_height, $bounds_width, 32-$bounds_height]);
+
+                #draw remained character's part #2 righter the intersection
+                $display_surface_ref->blit_by($self->sprites, [$src->[0]+$bounds_width, $src->[1], 32-$bounds_width, 32],
+                    [$map_pos->[0]+$bounds_width, $map_pos->[1], 32-$bounds_width, 32]);
+
+            } elsif ($ch_pos_x < $bounds_x &&
+                $ch_pos_y == $bounds_y) {
+
+                #draw intersection's part
+                $display_surface_ref->blit_by($self->sprites_overlap, [$src->[0]+32-$bounds_width, $src->[1], $bounds_width, $bounds_height],
+                    [$map_pos->[0]+32-$bounds_width, $map_pos->[1], $bounds_width, $bounds_height]);
+
+                #draw remained character's part #1 lower the intersection
+                $display_surface_ref->blit_by($self->sprites, [$src->[0]+32-$bounds_width, $src->[1]+$bounds_height, $bounds_width, 32-$bounds_height],
+                    [$map_pos->[0]+32-$bounds_width, $map_pos->[1]+$bounds_height, $bounds_width, 32-$bounds_height]);
+
+                #draw remained character's part #2 lefter the intersection
+                $display_surface_ref->blit_by($self->sprites, [$src->[0], $src->[1], 32-$bounds_width, 32],
+                    [$map_pos->[0], $map_pos->[1], 32-$bounds_width, 32]);
+
+            } elsif ($ch_pos_x < $bounds_x &&
+                $ch_pos_y < $bounds_y) {
+
+                #draw intersection's part
+                $display_surface_ref->blit_by($self->sprites_overlap, [$src->[0]+32-$bounds_width, $src->[1]+32-$bounds_height, $bounds_width, $bounds_height],
+                    [$map_pos->[0]+32-$bounds_width, $map_pos->[1]+32-$bounds_height, $bounds_width, $bounds_height]);
+
+                #draw remained character's part #1 upper the intersection
+                $display_surface_ref->blit_by($self->sprites, [$src->[0]+32-$bounds_width, $src->[1], $bounds_width, 32-$bounds_height],
+                    [$map_pos->[0]+32-$bounds_width, $map_pos->[1], $bounds_width, 32-$bounds_height]);
+
+                #draw remained character's part #2 lefter the intersection
+                $display_surface_ref->blit_by($self->sprites, [$src->[0], $src->[1], 32-$bounds_width, 32],
+                    [$map_pos->[0], $map_pos->[1], 32-$bounds_width, 32]);
+
+           } else {
+               #condition: $ch_pos_x == $bounds_x && $ch_pos_y < $bounds_y
+
+               #draw intersection's part
+               $display_surface_ref->blit_by($self->sprites_overlap, [$src->[0], $src->[1]+32-$bounds_height, $bounds_width, $bounds_height],
+                   [$map_pos->[0], $map_pos->[1]+32-$bounds_height, $bounds_width, $bounds_height]);
+
+               #draw remained character's part #1 upper the intersection
+               $display_surface_ref->blit_by($self->sprites, [$src->[0], $src->[1], $bounds_width, 32-$bounds_height],
+                   [$map_pos->[0], $map_pos->[1], $bounds_width, 32-$bounds_height]);
+
+               #draw remained character's part #2 righter the intersection
+               $display_surface_ref->blit_by($self->sprites, [$src->[0]+$bounds_width, $src->[1], 32-$bounds_width, 32],
+                   [$map_pos->[0]+$bounds_width, $map_pos->[1], 32-$bounds_width, 32]);
+
+           }
+        }
+    } else {
+        $display_surface_ref->blit_by($self->sprites, $src, $self->calc_map_pos($map_offset_x, $map_offset_y));
+    }
+    #$display_surface_ref->blit_by($self->sprites, $src, $self->calc_map_pos($map_offset_x, $map_offset_y));
 }
 
 #override Movable method
@@ -205,6 +356,13 @@ sub update_index {
 #override
 sub _build_sprites {
     return TextureManager->instance->get('BAD_GUY');
+}
+
+#new method
+sub _build_sprites_overlap {
+    my $result = TextureManager->instance->get('BAD_GUY_OVERLAP');
+    SDL::Video::set_alpha($result, SDL_RLEACCEL | SDL_SRCALPHA, 96);
+    return $result;
 }
 
 no Mouse;
