@@ -360,9 +360,7 @@ sub _build_sprites {
 
 #new method
 sub _build_sprites_overlap {
-    my $result = TextureManager->instance->get('BAD_GUY_OVERLAP');
-    SDL::Video::set_alpha($result, SDL_RLEACCEL | SDL_SRCALPHA, 96);
-    return $result;
+    return TextureManager->instance->get('OVERLAP');
 }
 
 no Mouse;

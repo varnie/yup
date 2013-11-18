@@ -24,7 +24,7 @@ use constant TEXTURE_NAMES => do {
         CLOUDS => File::Spec->catfile(@dirs, 'tiles', 'cloud_new1.png'),
         MOUNTAINS => File::Spec->catfile(@dirs, 'tiles', 'mountains_new1.png'),
         FOREST => File::Spec->catfile(@dirs, 'tiles', 'forest_new.png'),
-        'MAIN_CHARACTER_OVERLAP@BAD_GUY_OVERLAP' => File::Spec->catfile(@dirs, 'tiles', 'RE1_Sprites_v1_0_by_DoubleLeggy.png'),
+        OVERLAP => File::Spec->catfile(@dirs, 'tiles', 'RE1_Sprites_v1_0_by_DoubleLeggy.png'),
     }
 };
 
@@ -47,9 +47,13 @@ sub get {
             croak(SDL::get_error) unless $texture_data;
             $texture_data = SDL::Video::display_format($texture_data);
             croak(SDL::get_error) unless $texture_data;
-            if ($name eq 'BAD_GUY' || $name eq 'MAIN_CHARACTER' || $name eq 'MAIN_CHARACTER_OVERLAP' || $name eq 'BAD_GUY_OVERLAP') {
+            if ($name eq 'BAD_GUY' || $name eq 'MAIN_CHARACTER' || $name eq 'MAIN_CHARACTER_OVERLAP' || $name eq 'OVERLAP') {
                 croak(SDL::get_error) if SDL::Video::set_color_key($texture_data, SDL_SRCCOLORKEY
                     , SDL::Video::map_RGB($texture_data->format, 0xFF, 0xFF, 0xFF));
+
+                if ($name eq 'OVERLAP') {
+                    SDL::Video::set_alpha($texture_data, SDL_RLEACCEL | SDL_SRCALPHA, 96);
+                }
             }
             $self->{textures}->{$matched_key} = $texture_data;
 
