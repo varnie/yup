@@ -272,9 +272,13 @@ sub draw {
 sub handle_collision {
     my ($self) = @_;
     my $sprites = $self->sprites;
+    my $sprites_overlap = $self->sprites_overlap;
 
     if (SDL::Video::MUSTLOCK($sprites)) {
         SDL::Video::lock_surface($sprites);
+    }
+    if (SDL::Video::MUSTLOCK($sprites_overlap)) {
+        SDL::Video::lock_surface($sprites_overlap);
     }
 
     my $width = $sprites->pitch/4;
@@ -296,8 +300,12 @@ sub handle_collision {
                     my $r = $val & $R_mask;
                     #my $g = ($val & $G_mask);
                     #my $b = ($val & $B_mask);
+                    if ($r < $R_mask) {
 
-                    $sprites->set_pixels($index, ($r < $R_mask ? ($r+0x10000) : $r)+($val-$r));
+                        $val = ($r+0x10000) + ($val-$r);
+                        $sprites->set_pixels($index, $val);
+                        $sprites_overlap->set_pixels($index, $val);
+                    }
                 }
             }
         }
@@ -305,6 +313,9 @@ sub handle_collision {
 
     if (SDL::Video::MUSTLOCK($sprites)) {
         SDL::Video::unlock_surface($sprites);
+    }
+    if (SDL::Video::MUSTLOCK($sprites_overlap)) {
+        SDL::Video::unlock_surface($sprites_overlap);
     }
 }
 
