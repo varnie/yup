@@ -58,6 +58,8 @@ sub get {
             } elsif ($name eq 'MAIN_CHARACTER_INVERTED') {
                 croak(SDL::get_error) if SDL::Video::set_color_key($texture_data, SDL_SRCCOLORKEY
                     , SDL::Video::map_RGB($texture_data->format, 0, 0, 0));
+            } elsif ($name eq 'TILES') {
+                croak(SDL::get_error) if SDL::Video::set_color_key($texture_data, SDL_SRCCOLORKEY | SDL_RLEACCEL,  0);
             }
             $self->{textures}->{$matched_key} = $texture_data;
 

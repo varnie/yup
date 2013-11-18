@@ -30,6 +30,7 @@ use Character;
 use AnimatedSprite;
 use TextureManager;
 use BadGuy;
+use RidingBlock;
 use CollisionDetector;
 
 SDL::init(SDL_INIT_VIDEO);
@@ -62,6 +63,9 @@ my %map = %$map_ref;
 
 my $map_animated_sprites_ref = create_animated_sprites_map();
 my %map_animated_sprites = %$map_animated_sprites_ref;
+
+my $riding_blocks_sprites_list_ref = create_riding_blocks_sprites_list();
+my @riding_blocks_sprites_list = @$riding_blocks_sprites_list_ref;
 
 my $bad_guys_list_ref = create_bad_guys_list();
 my @bad_guys_list = @$bad_guys_list_ref;
@@ -105,7 +109,7 @@ my ($ch, $e, $quit, $time, $aux_time, $FPS, $show_FPS) = (
         map_ref => $map_ref,
         jumping => 1,
         velocity => 0,
-        pos => [684+5-32+0.98, 1632-16+10+20.1, 32, 32]
+        pos => [32, 768*2-100, 32, 32]
     ),
     SDL::Event->new,
     0,
@@ -297,6 +301,16 @@ while (!$quit) {
             }
         }
 
+        #riding blocks draw
+        foreach my $riding_block (grep {
+                my ($riding_block_x, $riding_block_y) = @{$_->pos}[0..1];
+                $riding_block_x >= $map_offset_x-32 && $riding_block_x <= $map_offset_x + $screen_w+32
+                && $riding_block_y >= $map_offset_y-32 && $riding_block_y <= $map_offset_y + $screen_h+32
+            } @riding_blocks_sprites_list
+        ) {
+            $riding_block->draw($display_surface, $map_offset_x, $map_offset_y);
+        }
+
         #bad guys draw
         foreach my $bad_guy (grep {
                 my ($bad_guy_x, $bad_guy_y) = @{$_->pos}[0..1];
@@ -317,6 +331,10 @@ while (!$quit) {
         foreach my $bad_guy (@bad_guys_list) {
             $bad_guy->update_index($new_time);
             $bad_guy->update_pos($new_time);
+        }
+
+        foreach my $riding_block (@riding_blocks_sprites_list) {
+            $riding_block->update_pos($new_time);
         }
 
         my $bang = 0;
@@ -351,7 +369,7 @@ sub create_map {
     my %result;
     foreach my $x (0..(1024*3/32)-1) {
         foreach my $y (0..(768*3/32)-1) {
-            if ($y == 0 || $y == 4 && $x != 3 || $y == 2 && $x !=4 || $y == 19 && $x != 4) {
+            if ($y == 0 || $y == 2 && $x !=4 || $y == 19 && $x != 4) {
                 $result{$x+$y*(1024*3/32)} = 1;
             }
         }
@@ -381,6 +399,15 @@ sub create_animated_sprites_map {
     ##$result{96*22+60} = AnimatedSprite->new(sprites_count => 11);
     ##$result{96*28} = AnimatedSprite->new(sprites_count => 11);
     return \%result;
+}
+
+sub create_riding_blocks_sprites_list {
+    my @result;
+
+    push @result, RidingBlock->new(pos => [32, 768*2-100, 32, 32], duration => 500);
+    push @result, RidingBlock->new(pos => [64, 768*2-100, 32, 32], duration => 250);
+    push @result, RidingBlock->new(pos => [96, 768*2-100, 32, 32]);
+    return \@result;
 }
 
 sub create_bad_guys_list {
