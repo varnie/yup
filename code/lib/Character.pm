@@ -328,8 +328,8 @@ sub update_pos {
         my $new_x = $x;
 
         if ($self->step_x) {
-            my $add_x = $self->move_key_hold ? ($new_dt - $self->key_hold_start_time)*4 : 0;
-            $add_x = 4 if $add_x > 4;
+            my $add_x = $self->move_key_hold ? 2*($new_dt - $self->key_hold_start_time) : 0;
+            $add_x = 2 if $add_x > 2;
             $self->aux($add_x);
             $new_x += ($self->step_x_speed + $add_x)*$self->step_x;
         } else {
