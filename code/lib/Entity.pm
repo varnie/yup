@@ -49,10 +49,6 @@ sub draw {
     confess shift, "should have defined `draw`";
 }
 
-sub update_index {
-    confess shift, "should have defined `update_index`";
-}
-
 sub _build_sprites {
     confess shift, "should have defined `_build_sprites`";
 }
