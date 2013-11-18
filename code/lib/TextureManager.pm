@@ -25,6 +25,7 @@ use constant TEXTURE_NAMES => do {
         MOUNTAINS => File::Spec->catfile(@dirs, 'tiles', 'mountains_new1.png'),
         FOREST => File::Spec->catfile(@dirs, 'tiles', 'forest_new.png'),
         OVERLAP => File::Spec->catfile(@dirs, 'tiles', 'RE1_Sprites_v1_0_by_DoubleLeggy.png'),
+        MAIN_CHARACTER_INVERTED => File::Spec->catfile(@dirs, 'tiles', 'RE1_Sprites_v1_0_by_DoubleLeggy_inverted.png'),
     }
 };
 
@@ -54,6 +55,9 @@ sub get {
                 if ($name eq 'OVERLAP') {
                     SDL::Video::set_alpha($texture_data, SDL_RLEACCEL | SDL_SRCALPHA, 96);
                 }
+            } elsif ($name eq 'MAIN_CHARACTER_INVERTED') {
+                croak(SDL::get_error) if SDL::Video::set_color_key($texture_data, SDL_SRCCOLORKEY
+                    , SDL::Video::map_RGB($texture_data->format, 0, 0, 0));
             }
             $self->{textures}->{$matched_key} = $texture_data;
 

@@ -22,12 +22,50 @@ use constant {
     LOOK_AT_ME => 2
 };
 
+has cur_sprites => (
+    is => 'rw',
+    isa => 'SDL::Surface'
+);
+
+has damage_mode => (
+    is => 'rw',
+    isa => 'Num',
+    default => 0
+);
+
+has damage_duration => (
+    is => 'rw',
+    isa => 'Num',
+    default => 0
+);
+
+has cur_damage_counter => (
+    is => 'rw',
+    isa => 'Num',
+    default => 0
+);
+
+has show_damage => (
+    is => 'rw',
+    isa => 'Num',
+    default => 0
+);
+
 #new attribute
 has sprites_overlap => (
     is => 'ro',
     isa => 'SDL::Surface',
     lazy => 1,
     builder => '_build_sprites_overlap',
+    init_arg => undef
+);
+
+#new attribute
+has sprites_inverted => (
+    is => 'ro',
+    isa => 'SDL::Surface',
+    lazy => 1,
+    builder => '_build_sprites_inverted',
     init_arg => undef
 );
 
@@ -264,13 +302,35 @@ sub draw {
            }
         }
     } else {
-        $display_surface_ref->blit_by($self->sprites, $src, $self->calc_map_pos);
+        if ($self->damage_mode) {
+            my $damage_duration = $self->damage_duration;
+            my $cur_damage_counter = $self->cur_damage_counter;
+            $self->cur_damage_counter(++$cur_damage_counter);
+            if ($cur_damage_counter == 4) {
+                $self->show_damage($self->show_damage == 1 ? 0 : 1);
+                $self->cur_damage_counter(0);
+            }
+
+            $display_surface_ref->blit_by($self->show_damage ? $self->sprites_inverted : $self->sprites, $src, $self->calc_map_pos);
+            $self->damage_duration(--$damage_duration);
+            $self->damage_mode(0) unless $damage_duration;
+        } else {
+            $display_surface_ref->blit_by($self->sprites, $src, $self->calc_map_pos);
+        }
     }
 }
 
 #new method
 sub handle_collision {
     my ($self) = @_;
+
+    if (!$self->damage_mode) {
+        $self->damage_mode(1);
+        $self->damage_duration(20);
+        $self->cur_damage_counter(0);
+        $self->show_damage(1);
+    }
+
     my $sprites = $self->sprites;
     my $sprites_overlap = $self->sprites_overlap;
 
@@ -381,7 +441,7 @@ sub update_pos {
         if (!$self->velocity) {
             # failing
 
-            my $new_y = 5 + $y + 19.62*(($new_dt - $self->jump_dt)**2);
+            my $new_y = 5 + $y + 9*(($new_dt - $self->jump_dt)**2);
             my ($test_y, $catched_thru_pass) = ($y, 0);
 
             while ($test_y < $new_y) {
@@ -415,7 +475,7 @@ sub update_pos {
                 $self->jumping(0);
             } else {
 
-                my $new_velocity = $self->velocity - 2.2*($new_dt - $self->jump_dt);
+                my $new_velocity = $self->velocity - 1.5*($new_dt - $self->jump_dt);
                 $new_velocity = 0 if $new_velocity < 0;
 
                 my $new_y = $y - $new_velocity;
@@ -449,12 +509,17 @@ sub update_index {
 
 #override
 sub _build_sprites {
-    return TextureManager->instance->get('MAIN_CHARACTER');
+    TextureManager->instance->get('MAIN_CHARACTER');
 }
 
 #new method
 sub _build_sprites_overlap {
     return TextureManager->instance->get('OVERLAP');
+}
+
+#new method
+sub _build_sprites_inverted {
+    return TextureManager->instance->get('MAIN_CHARACTER_INVERTED');
 }
 
 no Mouse;

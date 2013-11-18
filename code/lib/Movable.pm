@@ -32,7 +32,7 @@ has step_x => (
 has step_x_speed => (
     is => 'rw',
     isa => 'Num',
-    default => 3.8
+    default => 4
 );
 
 #new attribute
