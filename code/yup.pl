@@ -405,9 +405,12 @@ sub create_animated_sprites_map {
 sub create_riding_blocks_sprites_list {
     my @result;
 
-    push @result, RidingBlock->new(pos => [32, 768*2-100, 32, 32], duration => 500);
-    push @result, RidingBlock->new(pos => [64, 768*2-100, 32, 32], duration => 250);
-    push @result, RidingBlock->new(pos => [96, 768*2-100, 32, 32]);
+    push @result, RidingBlock->new(pos => [32*5, 768*2-100, 32, 32], duration => 100, moving_type => 1);
+    push @result, RidingBlock->new(pos => [32*9, 768*2-100, 32, 32], duration => 100, moving_type => 2);
+    push @result, RidingBlock->new(pos => [96, 768*2+32*3, 32, 32], duration => 200, moving_type => 4);
+
+    #push @result, RidingBlock->new(pos => [96*2, 768*2+32, 32, 32], moving_type => 3, duration => 200);
+    #push @result, RidingBlock->new(pos => [96*2, 768*2, 32, 32], moving_type => 4, duration => 200);
     return \@result;
 }
 

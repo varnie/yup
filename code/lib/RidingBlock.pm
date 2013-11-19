@@ -48,25 +48,45 @@ has step_x_speed => (
 #override Movable method
 sub update_pos {
     my ($self) = @_;
+    
+    state $half_duration = $self->duration/2;
 
     if ($self->moving_type == 1) {
         #UP
 
-        my $new_y = $self->pos->[1] - $self->step_x_speed;
-        $self->pos->[1] = $new_y;
-        if ($new_y <= $self->initial_pos->[1] - $self->duration) {
+        $self->pos->[1] -= $self->step_x_speed;
+        if ($self->pos->[1] <= $self->initial_pos->[1] - $half_duration) {
+            $self->pos->[1] = $self->initial_pos->[1] - $half_duration;
             $self->moving_type(2);
         }
     } elsif ($self->moving_type == 2) {
         #DOWN
-        
-        my $new_y = $self->pos->[1] + $self->step_x_speed;
-        $self->pos->[1] = $new_y;
 
-        if ($new_y >= $self->initial_pos->[1]) {
+        $self->pos->[1] += $self->step_x_speed;
+
+        if ($self->pos->[1] >= $self->initial_pos->[1] + $half_duration) {
+            $self->pos->[1] = $self->initial_pos->[1] + $half_duration;
             $self->moving_type(1);
         }
-    } #TODO: horisontal movements
+    } elsif ($self->moving_type == 3) {
+        #LEFT
+
+        $self->pos->[0] -= $self->step_x_speed;
+
+        if ($self->pos->[0] <= $self->initial_pos->[0] - $half_duration) {
+            $self->pos->[0] = $self->initial_pos->[0] - $half_duration;
+            $self->moving_type(4);
+        }
+    } else {
+        #RIGHT
+
+        $self->pos->[0] += $self->step_x_speed;
+
+        if ($self->pos->[0] >= $self->initial_pos->[0] + $half_duration) {
+            $self->pos->[0] = $self->initial_pos->[0] + $half_duration;
+            $self->moving_type(3);
+        }
+    }
 }
 
 #override Entity method
@@ -88,10 +108,15 @@ sub _build_sprites {
     return TextureManager->instance->get('TILES');
 }
 
-sub BUILD {
-    my ($self, $args) = @_;
-    $self->initial_pos([@{$args->{pos}}]);
-}
+around BUILDARGS => sub {
+
+    my ($orig, $class, %args) = @_;
+    if (!exists($args{initial_pos})) {
+        $args{initial_pos} = [@{$args{pos}}];
+    }
+
+    return $class->$orig(%args);
+};
 
 no Mouse;
 __PACKAGE__->meta->make_immutable;
