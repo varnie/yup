@@ -247,7 +247,8 @@ sub update_pos {
     my ($x, $y) = @{$self->pos}[0..1];
 
     if ($self->step_x != 0) {
-        my $new_x = $x + $self->step_x_speed*$self->step_x;
+        #my $new_x = $x + $self->step_x_speed*$self->step_x;
+        my $new_x = $x + $self->step_x_speed*$self->step_x*($new_dt - $self->move_dt)*30;
         if ($new_x >= 0 && $new_x <= $self->map_width-32) {
 
             if (!($self->jumping && $y % 32 == 0 && $self->is_map_val($x, $y) && $self->is_map_val($x, $y-1) && $self->is_map_val($x+32, $y))) {
@@ -281,6 +282,8 @@ sub update_pos {
             }
         }
     }
+
+    $self->move_dt($new_dt);
 
     if ($self->jumping) {
 

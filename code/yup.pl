@@ -141,6 +141,7 @@ my $x_per_screen = int($screen_w/32);
 my $y_per_screen = int($screen_h/32);
 my @animated_sprites_keys = keys %map_animated_sprites;
 
+#$ch->move_dt(Time::HiRes::time);
 while (!$quit) {
     SDL::Events::pump_events();
     while (SDL::Events::poll_event($e)) {

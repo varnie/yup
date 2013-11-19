@@ -7,6 +7,13 @@ use 5.010;
 use Mouse;
 
 #new attribute
+has move_dt => (
+    is => 'rw',
+    isa => 'Num',
+    default => Time::HiRes::time
+);
+
+#new attribute
 has look_sprites => (
     is => 'rw',
     isa => 'ArrayRef[ArrayRef[Num]]',

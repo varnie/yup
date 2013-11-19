@@ -391,7 +391,7 @@ sub update_pos {
             my $add_x = $self->move_key_hold ? 0.5*($new_dt - $self->key_hold_start_time) : 0;
             $add_x = 2 if $add_x > 2;
             $self->aux($add_x);
-            $new_x += ($self->step_x_speed + $add_x)*$self->step_x;
+            $new_x += $self->step_x_speed*$self->step_x*($new_dt - $self->move_dt)*30 + $add_x*$self->step_x;
         } else {
             my $new_aux = $self->aux - 0.5*($new_dt - $self->key_hold_start_time);
             if ($new_aux < 0) {
@@ -402,6 +402,7 @@ sub update_pos {
 
             $self->aux($new_aux);
         }
+
 
         if ($new_x != $x && $new_x >= 0 && $new_x <= $self->map_width-32) {
 
@@ -435,6 +436,8 @@ sub update_pos {
 
         $self->slide(0) unless $self->aux;
     }
+
+    $self->move_dt($new_dt);
 
     if ($self->jumping) {
 
