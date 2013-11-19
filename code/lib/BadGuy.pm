@@ -360,7 +360,7 @@ sub _build_sprites {
 
 #new method
 sub _build_sprites_overlap {
-    return TextureManager->instance->get('OVERLAP');
+    return TextureManager->instance->get('MAIN_CHARACTER_OVERLAP');
 }
 
 no Mouse;
