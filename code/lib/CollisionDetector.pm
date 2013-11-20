@@ -36,8 +36,8 @@ has map_height => (
 );
 
 sub simple_intersect {
-    my ($this, $bounds) = @_;
-    foreach my $bad_guy (@{$this->bad_guys_list}) {
+    my ($self, $bounds) = @_;
+    foreach my $bad_guy (@{$self->bad_guys_list}) {
         if ((abs($bounds->[0]-$bad_guy->pos->[0]) < 26)
         && (abs($bounds->[1]-$bad_guy->pos->[1]) < 24)) {
             return 1;
@@ -47,13 +47,13 @@ sub simple_intersect {
 }
 
 sub strict_intersect_bounds {
-    my ($this, $bounds) = @_;
+    my ($self, $bounds) = @_;
 
-    state $x_per_row = int($this->map_width/32);
+    state $x_per_row = int($self->map_width/32);
 
-    my $max_y = $this->map_height;
+    my $max_y = $self->map_height;
 
-    foreach my $k (%{$this->animated_sprites_list}) {
+    foreach my $k (%{$self->animated_sprites_list}) {
         my $x = $k % $x_per_row;
         my $y = ($k-$x)/$x_per_row;
 

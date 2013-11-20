@@ -105,6 +105,13 @@ has map_ref => (
 );
 
 #new attribute
+has riding_blocks_list_ref => (
+    is => 'rw',
+    isa => 'ArrayRef[RidingBlock]',
+    required => 1
+);
+
+#new attribute
 has move_key_hold => (
     is => 'rw',
     isa => 'Num',
@@ -131,6 +138,24 @@ has aux => (
     isa => 'Num',
     default => 0
 );
+
+has 'riding_block' => (
+    is => 'rw',
+    isa => 'Maybe[RidingBlock]',
+    default => undef
+);
+
+#new method
+sub attach_to {
+    my ($self, $riding_block) = @_;
+    $self->riding_block($riding_block);
+}
+
+#new method
+sub detach {
+    my ($self) = @_;
+    $self->riding_block(undef);
+}
 
 #new method
 sub reset_velocity {
@@ -164,6 +189,7 @@ sub draw {
         }
     };
 
+    #check if Character intersects with animated water sprites
     my $bounds = CollisionDetector->instance->strict_intersect_bounds($self->pos);
     if ($bounds) {
         my ($bounds_x, $bounds_y, $bounds_width, $bounds_height) = @{$bounds};
@@ -384,14 +410,23 @@ sub update_pos {
     my ($self, $new_dt) = @_;
     my ($x, $y) = @{$self->pos}[0..1];
 
+    if (defined($self->riding_block)) {
+        if ($self->riding_block->is_horizontal_move) {
+            $self->pos->[0] = $x = $self->riding_block->moving_type == 3 ? $self->pos->[0] - $self->riding_block->step_x_speed : $self->pos->[0] + $self->riding_block->step_x_speed;
+            $self->pos->[1] = $y = $self->riding_block->pos->[1] - 32;
+        } else {
+            $self->pos->[1] = $y = $self->riding_block->pos->[1] - 32;
+        }
+    }
+
     if ($self->step_x || $self->slide) {
         my $new_x = $x;
 
         if ($self->step_x) {
             my $add_x = $self->move_key_hold ? 0.5*($new_dt - $self->key_hold_start_time) : 0;
             $add_x = 2 if $add_x > 2;
-            $self->aux($add_x);
             $new_x += $self->step_x_speed*$self->step_x*($new_dt - $self->move_dt)*30 + $add_x*$self->step_x;
+            $self->aux($add_x);
         } else {
             my $new_aux = $self->aux - 0.5*($new_dt - $self->key_hold_start_time);
             if ($new_aux < 0) {
@@ -409,13 +444,13 @@ sub update_pos {
             if (!($self->jumping && $y % 32 == 0 && $self->is_map_val($x, $y) && $self->is_map_val($x, $y-1) && $self->is_map_val($x+32, $y))) {
 
                 if ($self->step_x == 1 || $self->slide == 1) {
-                    if (!$self->is_map_val($new_x+32, $y+($self->jumping ? 0 : 32))) {
+                    if (!$self->is_map_val($new_x+32, $y+($self->jumping ? 0 : 32)) && !$self->is_riding_block_val($new_x, $y)) {
                         $self->pos->[0] = $x = $new_x;
                     } else {
                         $self->pos->[0] = $x = 32*(int($new_x/32));
                     }
                 } elsif ($self->step_x == -1 || $self->slide == -1) {
-                    if (!$self->is_map_val($new_x, $y+($self->jumping ? 0 : 32))) {
+                    if (!$self->is_map_val($new_x, $y+($self->jumping ? 0 : 32)) && !$self->is_riding_block_val($new_x, $y)) {
                         $self->pos->[0] = $x = $new_x;
                     } else {
                         $self->pos->[0] = $x = 32*(int($new_x/32)+1);
@@ -425,8 +460,8 @@ sub update_pos {
 
             if (!$self->jumping) {
                 if ((($self->step_x == 1 || $self->slide == 1) && !$self->is_map_val($x+12, $y+64)) ||
-                    (($self->step_x == -1 || $self->slide == -1) && !$self->is_map_val($x+20, $y+64))) {
-
+                    (($self->step_x == -1 || $self->slide == -1) && !$self->is_map_val($x+20, $y+64))
+                ) {
                     $self->jumping(1);
                     $self->velocity(0);
                     $self->jump_dt(Time::HiRes::time);
@@ -435,6 +470,24 @@ sub update_pos {
         }
 
         $self->slide(0) unless $self->aux;
+    }
+
+    if ($self->riding_block) {
+        if (($self->step_x == 1 || $self->slide == 1) && !$self->is_riding_block_val($x+6, $y+32)) {
+            $self->detach();
+            $self->pos->[0] = $x = 32*(1 + int($x/32));
+
+            $self->jumping(1);
+            $self->velocity(0);
+            $self->jump_dt(Time::HiRes::time);
+        } elsif (($self->step_x == -1 || $self->slide == -1) && !$self->is_riding_block_val($x-6, $y+32)) {
+            $self->detach();
+            $self->pos->[0] = $x = 32*(int($x/32));
+
+            $self->jumping(1);
+            $self->velocity(0);
+            $self->jump_dt(Time::HiRes::time);
+        }
     }
 
     $self->move_dt($new_dt);
@@ -447,6 +500,8 @@ sub update_pos {
             my $new_y = 5 + $y + 9*(($new_dt - $self->jump_dt)**2);
             my ($test_y, $catched_thru_pass) = ($y, 0);
 
+            my $riding_block;
+
             while ($test_y < $new_y) {
 
                 if (!$self->step_x && !$self->slide) {
@@ -454,12 +509,25 @@ sub update_pos {
                         $self->pos->[0] = $x = (1 + int($x/32)) * 32;
                     } elsif ($self->is_map_val($x+32, $test_y)) {
                         $self->pos->[0] = $x = int($x/32) * 32;
+                    } elsif ($self->is_riding_block_val($x, $test_y+32) && !$self->is_riding_block_val($x+12, $test_y+32)) {
+                        $self->pos->[0] = $x = 32*(1+ int($x/32));
+                        $self->detach();
+                    } elsif ($self->is_riding_block_val($x, $test_y+32) && !$self->is_riding_block_val($x-12, $test_y+32)) {
+                        $self->pos->[0] = $x = 32*int($x/32);
+                        $self->detach();
                     }
                 }
 
-                if ($self->is_map_val($x+16, $test_y+32)) {
-                    $self->pos->[1] = $y = int($test_y - $test_y%32);
+                if ($self->is_map_val($x+16, $test_y+32) || (($riding_block = $self->is_riding_block_val($x, $test_y+32)) != 0)) {
                     $self->jumping(0);
+
+                    if ($riding_block) {
+                        if (!defined($self->riding_block) || $self->riding_block != $riding_block) {
+                            $self->attach_to($riding_block);
+                        }
+                    } else {
+                        $self->pos->[1] = $y = int($test_y - $test_y%32);
+                    }
 
                     $catched_thru_pass = 1;
                     last;
@@ -474,6 +542,10 @@ sub update_pos {
         } else {
             # jumping up
 
+            if (defined($self->riding_block)) {
+                $self->detach();
+            }
+
             if ($y % 32 == 0 && $self->is_map_val($x, $y) && $self->is_map_val($x, $y-1) && $self->is_map_val($x+32, $y)) {
                 $self->jumping(0);
             } else {
@@ -482,7 +554,7 @@ sub update_pos {
                 $new_velocity = 0 if $new_velocity < 0;
 
                 my $new_y = $y - $new_velocity;
-                if (!($self->is_map_val($x, $new_y) || $self->is_map_val($x+31, $new_y))) {
+                if (!($self->is_map_val($x, $new_y) || $self->is_map_val($x+31, $new_y) || $self->is_riding_block_val($x, $new_y))) {
                     $self->pos->[1] = $y = $new_y;
                     $self->velocity($new_velocity);
                 } else {
@@ -497,6 +569,22 @@ sub update_pos {
 sub is_map_val {
     my $self = shift;
     return exists $self->map_ref->{int($_[0]/32) + int(($self->map_height-$_[1])/32)*($self->map_width/32)};
+}
+
+#new method
+sub is_riding_block_val {
+    my ($self, $x, $y) = @_;
+
+    foreach my $riding_block (@{$self->riding_blocks_list_ref}) {
+        my ($riding_block_x, $riding_block_y) = @{$riding_block->pos}[0..1];
+        if (abs($x - $riding_block_x) < 32 &&
+            abs($y - $riding_block_y) < 32) {
+
+            return $riding_block;
+        }
+    }
+
+    return 0;
 }
 
 #override Movable method

@@ -48,11 +48,15 @@ has step_x_speed => (
 #override Movable method
 sub update_pos {
     my ($self) = @_;
-    
+
     state $half_duration = $self->duration/2;
+
+    my $is_vertical_move;
 
     if ($self->moving_type == 1) {
         #UP
+
+        $is_vertical_move = 1;
 
         $self->pos->[1] -= $self->step_x_speed;
         if ($self->pos->[1] <= $self->initial_pos->[1] - $half_duration) {
@@ -61,6 +65,8 @@ sub update_pos {
         }
     } elsif ($self->moving_type == 2) {
         #DOWN
+
+        $is_vertical_move = 1;
 
         $self->pos->[1] += $self->step_x_speed;
 
@@ -71,6 +77,8 @@ sub update_pos {
     } elsif ($self->moving_type == 3) {
         #LEFT
 
+        $is_vertical_move = 0;
+
         $self->pos->[0] -= $self->step_x_speed;
 
         if ($self->pos->[0] <= $self->initial_pos->[0] - $half_duration) {
@@ -79,6 +87,8 @@ sub update_pos {
         }
     } else {
         #RIGHT
+
+        $is_vertical_move = 0;
 
         $self->pos->[0] += $self->step_x_speed;
 
@@ -102,6 +112,12 @@ sub calc_map_pos {
 sub draw {
     my ($self, $display_surface_ref, $map_offset_x, $map_offset_y) = @_;
     $display_surface_ref->blit_by($self->sprites, $self->look_sprites->[0], $self->calc_map_pos($map_offset_x, $map_offset_y));
+}
+
+#new method
+sub is_horizontal_move {
+    my ($self) = @_;
+    return $self->moving_type > 2;
 }
 
 sub _build_sprites {

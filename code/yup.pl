@@ -107,6 +107,7 @@ my ($ch, $e, $quit, $time, $aux_time, $FPS, $show_FPS) = (
         map_width => $max_x,
         map_height => $max_y,
         map_ref => $map_ref,
+        riding_blocks_list_ref => $riding_blocks_sprites_list_ref,
         jumping => 1,
         velocity => 0,
         pos => [32, 768*2-100, 32, 32]
@@ -326,16 +327,16 @@ while (!$quit) {
         $ch->draw($display_surface);
 
         #####update everything
+        foreach my $riding_block (@riding_blocks_sprites_list) {
+            $riding_block->update_pos($new_time);
+        }
+
         $ch->update_index($new_time);
         $ch->update_pos($new_time);
 
         foreach my $bad_guy (@bad_guys_list) {
             $bad_guy->update_index($new_time);
             $bad_guy->update_pos($new_time);
-        }
-
-        foreach my $riding_block (@riding_blocks_sprites_list) {
-            $riding_block->update_pos($new_time);
         }
 
         my $bang = 0;
@@ -381,6 +382,7 @@ sub create_map {
     $result{96*20 + 95} = 1;
     #$result{96*20 + 20} = 1;
     delete $result{96*2+4};
+    delete $result{96*2+5};
     delete $result{96*19+39};
 
     return (\%result, (1024*3, 768*3));
@@ -405,9 +407,10 @@ sub create_animated_sprites_map {
 sub create_riding_blocks_sprites_list {
     my @result;
 
-    push @result, RidingBlock->new(pos => [32*5, 768*2-100, 32, 32], duration => 100, moving_type => 1);
-    push @result, RidingBlock->new(pos => [32*9, 768*2-100, 32, 32], duration => 100, moving_type => 2);
-    push @result, RidingBlock->new(pos => [96, 768*2+32*3, 32, 32], duration => 200, moving_type => 4);
+    #push @result, RidingBlock->new(pos => [32*5, 768*2-100, 32, 32], duration => 100, moving_type => 1);
+    push @result, RidingBlock->new(pos => [32*10, 768*2+32*17, 32, 32], duration => 32*6, moving_type => 2);
+    push @result, RidingBlock->new(pos => [32*11, 768*2+32*18, 32, 32], duration => 32*6, moving_type => 1);
+    #push @result, RidingBlock->new(pos => [96, 768*2+32*3, 32, 32], duration => 200, moving_type => 4);
 
     #push @result, RidingBlock->new(pos => [96*2, 768*2+32, 32, 32], moving_type => 3, duration => 200);
     #push @result, RidingBlock->new(pos => [96*2, 768*2, 32, 32], moving_type => 4, duration => 200);
