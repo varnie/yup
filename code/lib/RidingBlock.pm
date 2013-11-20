@@ -49,7 +49,7 @@ has step_x_speed => (
 sub update_pos {
     my ($self) = @_;
 
-    state $half_duration = $self->duration/2;
+    my $half_duration = $self->duration/2;
 
     my $is_vertical_move;
 
