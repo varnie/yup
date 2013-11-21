@@ -7,6 +7,7 @@ use 5.010;
 use Time::HiRes;
 
 use Mouse;
+use Moose::Util::TypeConstraints;
 use TextureManager;
 use CollisionDetector;
 
@@ -15,10 +16,17 @@ use Entity;
 use Movable;
 extends 'Entity', 'Movable';
 
+use constant MOVEMENT => {
+    UP => 1,
+    DOWN => 2,
+    LEFT => 3,
+    RIGHT => 4 
+};
+
 has moving_type => (
     is => 'rw',
-    isa => 'Num',
-    default => 1 #1 = UP; 2 = DOWN; 3 = LEFT; 4 = RIGHT;
+    isa => enum([values(MOVEMENT)]), #'Num',
+    default => MOVEMENT->{UP} #1 #1 = UP; 2 = DOWN; 3 = LEFT; 4 = RIGHT;
 );
 
 has duration => (
@@ -53,7 +61,7 @@ sub update_pos {
 
     my $is_vertical_move;
 
-    if ($self->moving_type == 1) {
+    if ($self->moving_type == MOVEMENT->{UP}) {
         #UP
 
         $is_vertical_move = 1;
@@ -61,9 +69,9 @@ sub update_pos {
         $self->pos->[1] -= $self->step_x_speed;
         if ($self->pos->[1] <= $self->initial_pos->[1] - $half_duration) {
             $self->pos->[1] = $self->initial_pos->[1] - $half_duration;
-            $self->moving_type(2);
+            $self->moving_type(MOVEMENT->{DOWN});
         }
-    } elsif ($self->moving_type == 2) {
+    } elsif ($self->moving_type == MOVEMENT->{DOWN}) {
         #DOWN
 
         $is_vertical_move = 1;
@@ -72,9 +80,9 @@ sub update_pos {
 
         if ($self->pos->[1] >= $self->initial_pos->[1] + $half_duration) {
             $self->pos->[1] = $self->initial_pos->[1] + $half_duration;
-            $self->moving_type(1);
+            $self->moving_type(MOVEMENT->{UP});
         }
-    } elsif ($self->moving_type == 3) {
+    } elsif ($self->moving_type == MOVEMENT->{LEFT}) {
         #LEFT
 
         $is_vertical_move = 0;
@@ -83,7 +91,7 @@ sub update_pos {
 
         if ($self->pos->[0] <= $self->initial_pos->[0] - $half_duration) {
             $self->pos->[0] = $self->initial_pos->[0] - $half_duration;
-            $self->moving_type(4);
+            $self->moving_type(MOVEMENT->{RIGHT});
         }
     } else {
         #RIGHT
@@ -94,7 +102,7 @@ sub update_pos {
 
         if ($self->pos->[0] >= $self->initial_pos->[0] + $half_duration) {
             $self->pos->[0] = $self->initial_pos->[0] + $half_duration;
-            $self->moving_type(3);
+            $self->moving_type(MOVEMENT->{LEFT});
         }
     }
 }
@@ -117,7 +125,7 @@ sub draw {
 #new method
 sub is_horizontal_move {
     my ($self) = @_;
-    return $self->moving_type > 2;
+    return $self->moving_type eq MOVEMENT->{LEFT} || $self->moving_type eq MOVEMENT->{RIGHT};
 }
 
 sub _build_sprites {

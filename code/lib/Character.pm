@@ -413,7 +413,7 @@ sub update_pos {
     if ($self->riding_block) {
         if ($self->riding_block->is_horizontal_move) {
             $self->pos->[0] = $x = $x + 
-                ($self->riding_block->moving_type == 3 ? -$self->riding_block->step_x_speed : $self->riding_block->step_x_speed);
+                ($self->riding_block->moving_type eq RidingBlock->MOVEMENT->{LEFT} ? -$self->riding_block->step_x_speed : $self->riding_block->step_x_speed);
         }
         
         $self->pos->[1] = $y = $self->riding_block->pos->[1] - 32;
@@ -432,9 +432,7 @@ sub update_pos {
                     $self->attach_to($test_block);
                 }
             } elsif (!$self->is_map_val($x, $y+64)) {
-                $self->jumping(1);
-                $self->velocity(0);
-                $self->jump_dt(Time::HiRes::time);
+                $self->init_failing;
 
                 $self->detach();
             }
@@ -446,9 +444,7 @@ sub update_pos {
                     $self->attach_to($test_block);
                 }
             } elsif (!$self->is_map_val($x, $y+64)) {
-                $self->jumping(1);
-                $self->velocity(0);
-                $self->jump_dt(Time::HiRes::time);
+                $self->init_failing;
 
                 $self->detach();
             }
@@ -499,9 +495,7 @@ sub update_pos {
                 if ((($self->step_x == 1 || $self->slide == 1) && !$self->is_map_val($x+12, $y+64)) ||
                     (($self->step_x == -1 || $self->slide == -1) && !$self->is_map_val($x+20, $y+64))
                 ) {
-                    $self->jumping(1);
-                    $self->velocity(0);
-                    $self->jump_dt(Time::HiRes::time);
+                    $self->init_failing;
                 }
             }
         }
@@ -512,20 +506,12 @@ sub update_pos {
     if ($self->riding_block) {
         if (($self->step_x == 1 || $self->slide == 1) && !$self->is_riding_block_val($x+6, $y+32)) {
             $self->detach();
-
             $self->pos->[0] = $x = 32*(1 + int($x/32));
-
-            $self->jumping(1);
-            $self->velocity(0);
-            $self->jump_dt(Time::HiRes::time);
+            $self->init_failing;
         } elsif (($self->step_x == -1 || $self->slide == -1) && !$self->is_riding_block_val($x-6, $y+32)) {
             $self->detach();
-
             $self->pos->[0] = $x = 32*(int($x/32));
-
-            $self->jumping(1);
-            $self->velocity(0);
-            $self->jump_dt(Time::HiRes::time);
+            $self->init_failing;
         }
     }
 
@@ -624,6 +610,15 @@ sub is_riding_block_val {
     }
 
     return 0;
+}
+
+#new method
+sub init_failing {
+    my ($self) = @_;
+    
+    $self->jumping(1);
+    $self->velocity(0);
+    $self->jump_dt(Time::HiRes::time);
 }
 
 #override Movable method
