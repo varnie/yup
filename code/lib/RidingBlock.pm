@@ -25,8 +25,8 @@ use constant MOVEMENT => {
 
 has moving_type => (
     is => 'rw',
-    isa => enum([values(MOVEMENT)]), #'Num',
-    default => MOVEMENT->{UP} #1 #1 = UP; 2 = DOWN; 3 = LEFT; 4 = RIGHT;
+    isa => enum([values(MOVEMENT)]),
+    default => MOVEMENT->{UP}
 );
 
 has duration => (
@@ -125,7 +125,7 @@ sub draw {
 #new method
 sub is_horizontal_move {
     my ($self) = @_;
-    return $self->moving_type eq MOVEMENT->{LEFT} || $self->moving_type eq MOVEMENT->{RIGHT};
+    return $self->moving_type == MOVEMENT->{LEFT} || $self->moving_type == MOVEMENT->{RIGHT};
 }
 
 sub _build_sprites {

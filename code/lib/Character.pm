@@ -413,7 +413,7 @@ sub update_pos {
     if ($self->riding_block) {
         if ($self->riding_block->is_horizontal_move) {
             $self->pos->[0] = $x = $x + 
-                ($self->riding_block->moving_type eq RidingBlock->MOVEMENT->{LEFT} ? -$self->riding_block->step_x_speed : $self->riding_block->step_x_speed);
+                ($self->riding_block->moving_type == RidingBlock->MOVEMENT->{LEFT} ? -$self->riding_block->step_x_speed : $self->riding_block->step_x_speed);
         }
         
         $self->pos->[1] = $y = $self->riding_block->pos->[1] - 32;
