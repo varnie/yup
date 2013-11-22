@@ -410,43 +410,82 @@ sub update_pos {
     my ($self, $new_dt) = @_;
     my ($x, $y) = @{$self->pos}[0..1];
 
-    if ($self->riding_block) {
-        if ($self->riding_block->is_horizontal_move) {
-            $self->pos->[0] = $x = $x + 
-                ($self->riding_block->moving_type == RidingBlock->MOVEMENT->{LEFT} ? -$self->riding_block->step_x_speed : $self->riding_block->step_x_speed);
-        }
-        
-        $self->pos->[1] = $y = $self->riding_block->pos->[1] - 32;
-    }
+    my $test_block = 0;
 
     #TODO:
-    my $test_block = $self->is_riding_block_val($x, $y);
+    if ($self->riding_block) {
+        if ($self->riding_block->is_horizontal_move) {
+            $self->pos->[0] = $x = $x +
+                ($self->riding_block->moving_type == RidingBlock->MOVEMENT->{LEFT} ? -$self->riding_block->step_x_speed : $self->riding_block->step_x_speed);
+            $self->pos->[1] = $y = $self->riding_block->pos->[1] - 32;
+        } else {
+            $self->pos->[1] = $y = $self->riding_block->pos->[1] - 32;
+        }
+
+        if ($self->riding_block && ($self->step_x || $self->slide)) {
+            my $test_block1 = $self->is_riding_block_val($x-32, $y+32);
+            my $test_block2 = $self->is_riding_block_val($x, $y+32);
+
+            if ($test_block1 && $test_block2 && $test_block1 != $test_block2) {
+                my $move_right = $self->step_x == 1 || $self->slide == 1;
+                if ($move_right) {
+                    if ($test_block2->is_horizontal_move) {
+                        $test_block = $test_block2;
+                    }
+                } else {
+                    if ($test_block1->is_horizontal_move) {
+                        $test_block = $test_block1;
+                    }
+                }
+
+            } elsif ($test_block1 && $test_block2 && $test_block1 == $test_block2) {
+                if ($test_block1->is_horizontal_move) {
+                    $test_block = $test_block1;
+                }
+            } elsif ($test_block1 && !$test_block2) {
+                if ($test_block1->is_horizontal_move) {
+                    $test_block = $test_block1;
+                }
+            } elsif ($test_block2 && !$test_block1) {
+                if ($test_block2->is_horizontal_move) {
+                    $test_block = $test_block2;
+                }
+            }
+        }
+    } else {
+        $test_block = $self->is_riding_block_val($x, $y);
+    }
     if ($test_block && (!$self->riding_block || $self->riding_block != $test_block)) {
 
         #almost works
-        if ($test_block->pos->[0] > $x) {
-            $self->pos->[0] = $x = $x - 8;
+        if ($test_block->is_horizontal_move && $test_block->pos->[1] != $self->pos->[1]) {
+            $self->attach_to($test_block);
+        } else {
 
-            if ($test_block = $self->is_riding_block_val($x, $y)) {
-                if ($test_block->is_horizontal_move) {
-                    $self->attach_to($test_block);
+            if ($test_block->pos->[0] > $x) {
+                $self->pos->[0] = $x = $x - 8;
+
+                if ($test_block = $self->is_riding_block_val($x, $y)) {
+                    if ($test_block->is_horizontal_move) {
+                        $self->attach_to($test_block);
+                    }
+                } elsif (!$self->is_map_val($x, $y+64)) {
+                    $self->init_failing;
+
+                    $self->detach();
                 }
-            } elsif (!$self->is_map_val($x, $y+64)) {
-                $self->init_failing;
+            } elsif ($test_block->pos->[0] < $x) {
+                $self->pos->[0] = $x = $x + 8;
 
-                $self->detach();
-            }
-        } elsif ($test_block->pos->[0] < $x) {
-            $self->pos->[0] = $x = $x + 8;
+                if ($test_block = $self->is_riding_block_val($x, $y)) {
+                    if ($test_block->is_horizontal_move) {
+                        $self->attach_to($test_block);
+                    }
+                } elsif (!$self->is_map_val($x, $y+64)) {
+                    $self->init_failing;
 
-            if ($test_block = $self->is_riding_block_val($x, $y)) {
-                if ($test_block->is_horizontal_move) {
-                    $self->attach_to($test_block);
+                    $self->detach();
                 }
-            } elsif (!$self->is_map_val($x, $y+64)) {
-                $self->init_failing;
-
-                $self->detach();
             }
         }
     }
@@ -455,8 +494,8 @@ sub update_pos {
         my $new_x = $x;
 
         if ($self->step_x) {
-            my $add_x = $self->move_key_hold ? 0.5*($new_dt - $self->key_hold_start_time) : 0;
-            $add_x = 2 if $add_x > 2;
+            my $add_x = $self->move_key_hold ? 0.8*($new_dt - $self->key_hold_start_time) : 0;
+            $add_x = 4 if $add_x > 4;
             $new_x += $self->step_x_speed*$self->step_x*($new_dt - $self->move_dt)*30 + $add_x*$self->step_x;
             $self->aux($add_x);
         } else {
@@ -476,16 +515,22 @@ sub update_pos {
             if (!($self->jumping && $y % 32 == 0 && $self->is_map_val($x, $y) && $self->is_map_val($x, $y-1) && $self->is_map_val($x+32, $y))) {
 
                 if ($self->step_x == 1 || $self->slide == 1) {
-                    if (!$self->is_map_val($new_x+32, $y+($self->jumping ? 0 : 32)) && !$self->is_riding_block_val($new_x, $y)) {
-                        $self->pos->[0] = $x = $new_x;
-                    } else {
-                        $self->pos->[0] = $x = 32*(int($new_x/32));
+                    my $block = $self->is_riding_block_val($new_x, $y);
+                    if (!$block) {
+                        if (!$self->is_map_val($new_x+32, $y+($self->jumping ? 0 : 32))) {
+                            $self->pos->[0] = $x = $new_x;
+                        } else {
+                            $self->pos->[0] = $x = 32*(int($new_x/32));
+                        }
                     }
                 } elsif ($self->step_x == -1 || $self->slide == -1) {
-                    if (!$self->is_map_val($new_x, $y+($self->jumping ? 0 : 32)) && !$self->is_riding_block_val($new_x, $y)) {
-                        $self->pos->[0] = $x = $new_x;
-                    } else {
-                        $self->pos->[0] = $x = 32*(int($new_x/32)+1);
+                    my $block = $self->is_riding_block_val($new_x, $y);
+                    if (!$block) {
+                        if (!$self->is_map_val($new_x, $y+($self->jumping ? 0 : 32))) {
+                            $self->pos->[0] = $x = $new_x;
+                        } else {
+                            $self->pos->[0] = $x = 32*(int($new_x/32)+1);
+                        }
                     }
                 }
             }
@@ -506,11 +551,11 @@ sub update_pos {
     if ($self->riding_block) {
         if (($self->step_x == 1 || $self->slide == 1) && !$self->is_riding_block_val($x+6, $y+32)) {
             $self->detach();
-            $self->pos->[0] = $x = 32*(1 + int($x/32));
+            #$self->pos->[0] = $x = 32*(1 + int($x/32));
             $self->init_failing;
         } elsif (($self->step_x == -1 || $self->slide == -1) && !$self->is_riding_block_val($x-6, $y+32)) {
             $self->detach();
-            $self->pos->[0] = $x = 32*(int($x/32));
+            #$self->pos->[0] = $x = 32*(int($x/32));
             $self->init_failing;
         }
     }
