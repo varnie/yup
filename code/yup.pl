@@ -101,7 +101,7 @@ croak(SDL::get_error) if SDL::Video::flip($whole_map_surface);
 #say ((scalar keys %map) / 24);
 #test
 
-my $particles_chunks_list = []; 
+my @particles_chunks_list;
 
 my ($ch, $e, $quit, $time, $aux_time, $FPS, $show_FPS) = (
     Character->new(
@@ -333,18 +333,18 @@ while (!$quit) {
         #character draw
         $ch->draw($display_surface);
 
-        if (@{$particles_chunks_list}) {
-            foreach my $particles_chunk (@{$particles_chunks_list}) {
+        if (@particles_chunks_list) {
+            foreach my $particles_chunk (@particles_chunks_list) {
                 $particles_chunk->draw($display_surface, $map_offset_x, $map_offset_y);
             }
         }
 
         if ($test_destruction) {
                 say "SPACE";
-                #test me       
+                #test me
                 my $particles_chunk = ParticlesChunk->new();
                 $particles_chunk->init($ch_pos_x, $ch_pos_y);
-                push @{$particles_chunks_list}, $particles_chunk;
+                push @particles_chunks_list, $particles_chunk;
 
                 #my $pos_x = $ch->pos->[0] + ($ch->step_x == 1 || $ch->slide == 1 ? 32 : $ch->step_x == -1 || $ch->slide == -1 ? -32 : 0);
                 #my $pos_y = $ch->pos->[1];
@@ -404,9 +404,16 @@ while (!$quit) {
             $bang = 1;
         }
 
-        if (@{$particles_chunks_list}) {
-            foreach my $particles_chunk (@{$particles_chunks_list}) {
+        if (@particles_chunks_list) {
+            my $i = 0;
+            while ($i <= $#particles_chunks_list) {
+                my $particles_chunk = $particles_chunks_list[$i];
                 $particles_chunk->update;
+                if ($particles_chunk->is_dead) {
+                    splice @particles_chunks_list, $i, 1;
+                } else {
+                    ++$i;
+                }
             }
         }
 

@@ -27,6 +27,12 @@ has items => (
     default => sub {[]}
 );
 
+has is_dead => (
+    is => 'rw',
+    isa => 'Num',
+    default => 0
+);
+
 sub init {
     my ($self, $center_x, $center_y) = @_;
     foreach my $i (1..$self->count) {
@@ -45,14 +51,17 @@ sub update {
     my ($self) = @_;
 
     my $i = 0;
-    foreach my $item (@{$self->items}) {
-        $item->update();
+    while ($i <= $#{$self->items}) {
+        my $item = @{$self->items}[$i];
+        $item->update;
         if ($item->ttl <= 0) {
             splice @{$self->items}, $i, 1;
+        } else {
+            ++$i;
         }
-
-        ++$i;
     }
+
+    $self->is_dead(1) unless @{$self->items};
 }
 
 no Mouse;

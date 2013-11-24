@@ -14,7 +14,7 @@ use TextureManager;
 has ttl => (
     is => 'rw',
     isa => 'Num',
-    default => sub {  int(rand(75)) + 25 }
+    default => sub { int(rand(75)) + 25 }
 );
 
 has red => (
@@ -22,8 +22,7 @@ has red => (
     isa => 'Num',
     lazy => 1,
     builder => sub {
-        my ($self) = @_;
-        return int(2.55 * $self->ttl);
+        int(2.55 * $_[0]->ttl);
     }
 );
 
@@ -46,7 +45,9 @@ sub draw {
     my $dst_rect = SDL::Rect->new($self->pos->[0] - $map_offset_x, $self->pos->[1] - $map_offset_y, $self->size, $self->size);
 
     my $aux_surface = TextureManager->instance->get('AUX_SURFACE');
-    SDL::Video::fill_rect($aux_surface, $src_rect, SDL::Video::map_RGBA($aux_surface->format(), $self->red, 0, 0, $self->red));
+    state $aux_surface_format = $aux_surface->format;
+
+    SDL::Video::fill_rect($aux_surface, $src_rect, SDL::Video::map_RGBA($aux_surface_format, $self->red, 0, 0, $self->red));
     SDL::Video::blit_surface($aux_surface, $src_rect, $display_surface, $dst_rect);
 
 }
