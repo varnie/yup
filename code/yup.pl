@@ -32,6 +32,7 @@ use TextureManager;
 use BadGuy;
 use RidingBlock;
 use CollisionDetector;
+use ParticlesChunk;
 
 SDL::init(SDL_INIT_VIDEO);
 
@@ -100,6 +101,8 @@ croak(SDL::get_error) if SDL::Video::flip($whole_map_surface);
 #say ((scalar keys %map) / 24);
 #test
 
+my $particles_chunks_list = []; 
+
 my ($ch, $e, $quit, $time, $aux_time, $FPS, $show_FPS) = (
     Character->new(
         screen_w => $screen_w,
@@ -110,7 +113,7 @@ my ($ch, $e, $quit, $time, $aux_time, $FPS, $show_FPS) = (
         riding_blocks_list_ref => $riding_blocks_sprites_list_ref,
         jumping => 1,
         velocity => 0,
-        pos => [32, 768*2-100, 32, 32]
+        pos => [32, 100, 32, 32]
     ),
     SDL::Event->new,
     0,
@@ -142,6 +145,8 @@ my $x_per_screen = int($screen_w/32);
 my $y_per_screen = int($screen_h/32);
 my @animated_sprites_keys = keys %map_animated_sprites;
 
+my $test_destruction = 0;
+
 #$ch->move_dt(Time::HiRes::time);
 while (!$quit) {
     SDL::Events::pump_events();
@@ -166,6 +171,8 @@ while (!$quit) {
                     $ch->jumping(1);
                     $ch->jump_dt($time);
                 }
+            } elsif ($key_sym == SDLK_SPACE) {
+                $test_destruction = 1;
             }
         } elsif ($e->type == SDL_KEYUP) {
             my $key_sym = $e->key_sym;
@@ -326,6 +333,58 @@ while (!$quit) {
         #character draw
         $ch->draw($display_surface);
 
+        if (@{$particles_chunks_list}) {
+            foreach my $particles_chunk (@{$particles_chunks_list}) {
+                $particles_chunk->draw($display_surface, $map_offset_x, $map_offset_y);
+            }
+        }
+
+        if ($test_destruction) {
+                say "SPACE";
+                #test me       
+                my $particles_chunk = ParticlesChunk->new();
+                $particles_chunk->init($ch_pos_x, $ch_pos_y);
+                push @{$particles_chunks_list}, $particles_chunk;
+
+                #my $pos_x = $ch->pos->[0] + ($ch->step_x == 1 || $ch->slide == 1 ? 32 : $ch->step_x == -1 || $ch->slide == -1 ? -32 : 0);
+                #my $pos_y = $ch->pos->[1];
+
+                ##my $test_rect = SDL::Rect->new($pos_x, $pos_y, 32, 32);
+                ##SDL::Video::fill_rect($whole_map_surface, $test_rect,
+                ##    SDL::Video::map_RGB($whole_map_surface->format, 0, 0, 255));
+
+                #if (SDL::Video::MUSTLOCK($whole_map_surface)) {
+                #    SDL::Video::lock_surface($whole_map_surface);
+                #}
+
+                #my $pitch = $whole_map_surface->pitch/4;
+
+                #my $R_mask = $whole_map_surface->format->Rmask;
+
+                #my $width = $whole_map_surface->w;
+
+                ##my $pixels_ptr = $whole_map_surface->get_pixels_ptr;
+                ##say $pixels_ptr;
+
+                #foreach my $y ($pos_y+8..$pos_y+16) {
+                #    my $base = $y*$width;
+                #    foreach my $x ($pos_x..$pos_x+32) {
+                #        my $index = $base + $x;
+                #        my $val = $whole_map_surface->get_pixel($index);
+                #        if ($val != 0) {
+                #            #my $r = $val & $R_mask;
+                #            my $val = 0x000000;
+                #            $whole_map_surface->set_pixels($index, $val);
+                #        }
+                #    }
+                #}
+
+                #if (SDL::Video::MUSTLOCK($whole_map_surface)) {
+                #    SDL::Video::unlock_surface($whole_map_surface);
+                #}
+                #test me
+                $test_destruction = 0;
+        }
         #####update everything
         foreach my $riding_block (@riding_blocks_sprites_list) {
             $riding_block->update_pos($new_time);
@@ -345,8 +404,15 @@ while (!$quit) {
             $bang = 1;
         }
 
+        if (@{$particles_chunks_list}) {
+            foreach my $particles_chunk (@{$particles_chunks_list}) {
+                $particles_chunk->update;
+            }
+        }
+
         #$debug_text_obj->write_to($display_surface, "bang: " . ($bang ? "YES" : "NO"));
-        $debug_text_obj->write_to($display_surface, "attached: " . ($ch->riding_block ? "YES" : "NO"));
+        #$debug_text_obj->write_to($display_surface, "attached: " . ($ch->riding_block ? "YES" : "NO"));
+        $debug_text_obj->write_to($display_surface, "ch: [" . $ch->pos->[0] . ", " . $ch->pos->[1] . "]");
 
         my $diff = SDL::get_ticks() - $start_ticks;
         if ($FRAME_RATE > $diff) {
@@ -378,6 +444,10 @@ sub create_map {
         }
     }
 
+
+
+    $result{96*3+3} = 1;
+    $result{96*33+1} = 1;
     $result{96*5+1} = 1;
     $result{96*5+7} = 1;
     $result{96*20 + 95} = 1;
@@ -412,10 +482,13 @@ sub create_riding_blocks_sprites_list {
     push @result, RidingBlock->new(pos => [32*11, 768*2+32*17, 32, 32], duration => 32*6, moving_type => RidingBlock->MOVEMENT->{DOWN});
     push @result, RidingBlock->new(pos => [96, 768*2+32*3, 32, 32], duration => 200);
 
+    push @result, RidingBlock->new(pos => [32*10, 768*2+32*14, 32, 32], duration => 32*6, moving_type => RidingBlock->MOVEMENT->{UP});
+    push @result, RidingBlock->new(pos => [32*11, 768*2+32*14, 32, 32], duration => 32*6, moving_type => RidingBlock->MOVEMENT->{UP});
+
     #push @result, RidingBlock->new(pos => [92*2+200, 768*2+32*2, 32, 32], duration => 80, moving_type => RidingBlock->MOVEMENT->{UP});
-    push @result, RidingBlock->new(pos => [96*2+200, 768*2+32*3, 32, 32], moving_type => RidingBlock->MOVEMENT->{RIGHT}, duration => 200);
+    push @result, RidingBlock->new(pos => [96*2+50, 768*2+32*3, 32, 32], moving_type => RidingBlock->MOVEMENT->{RIGHT}, duration => 200);
     push @result, RidingBlock->new(pos => [96*2+100, 768*2+32*3, 32, 32], moving_type => RidingBlock->MOVEMENT->{LEFT}, duration => 200);
-    ##push @result, RidingBlock->new(pos => [96*2, 768*2, 32, 32], moving_type => 4, duration => 200);
+    push @result, RidingBlock->new(pos => [64, 768+600, 32, 32], moving_type => RidingBlock->MOVEMENT->{RIGHT}, duration => 2000);
     return \@result;
 }
 

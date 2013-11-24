@@ -54,18 +54,32 @@ sub get {
                     , SDL::Video::map_RGB($texture_data->format, 0xFF, 0xFF, 0xFF));
 
                 if ($name eq 'MAIN_CHARACTER_OVERLAP') {
-                    SDL::Video::set_alpha($texture_data, SDL_RLEACCEL | SDL_SRCALPHA, 96);
+                    SDL::Video::set_alpha($texture_data, SDL_SRCALPHA, 96);
                 }
             } elsif ($name eq 'MAIN_CHARACTER_INVERTED') {
                 croak(SDL::get_error) if SDL::Video::set_color_key($texture_data, SDL_SRCCOLORKEY
                     , SDL::Video::map_RGB($texture_data->format, 0, 0, 0));
             } elsif ($name eq 'TILES') {
-                croak(SDL::get_error) if SDL::Video::set_color_key($texture_data, SDL_SRCCOLORKEY | SDL_RLEACCEL,  0);
+                croak(SDL::get_error) if SDL::Video::set_color_key($texture_data, SDL_SRCCOLORKEY,  0);
             }
             $self->{textures}->{$matched_key} = $texture_data;
 
             return $texture_data;
         }
+    } elsif ($name eq 'AUX_SURFACE') {
+        my $texture_data;
+        
+        if (!exists $self->{textures}->{AUX_SURFACE}) {
+            my $video_info = SDL::Video::get_video_info;
+            my ($screen_w, $screen_h, $bits_per_pixel) = ($video_info->current_w, $video_info->current_h, $video_info->vfmt->BitsPerPixel);
+
+            $texture_data = SDL::Surface->new(SDL_ANYFORMAT, $screen_w, $screen_h, $bits_per_pixel);
+            $self->{textures}->{AUX_SURFACE} = $texture_data;
+        } else {
+            $texture_data = $self->{textures}->{AUX_SURFACE};
+        }
+       
+        return $texture_data;
     } else {
         croak("Constant `$name` is not declared and could not be found into the synonyms.");
     }
