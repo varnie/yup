@@ -70,10 +70,7 @@ sub get {
         my $texture_data;
         
         if (!exists $self->{textures}->{AUX_SURFACE}) {
-            my $video_info = SDL::Video::get_video_info;
-            my ($screen_w, $screen_h, $bits_per_pixel) = ($video_info->current_w, $video_info->current_h, $video_info->vfmt->BitsPerPixel);
-
-            $texture_data = SDL::Surface->new(SDL_ANYFORMAT, $screen_w, $screen_h, $bits_per_pixel);
+            $texture_data = SDL::Surface->new(SDL_ANYFORMAT, 32, 32, SDL::Video::get_video_info->vfmt->BitsPerPixel);
             $self->{textures}->{AUX_SURFACE} = $texture_data;
         } else {
             $texture_data = $self->{textures}->{AUX_SURFACE};

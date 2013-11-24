@@ -42,11 +42,12 @@ has size => (
 sub draw {
     my ($self, $display_surface, $map_offset_x, $map_offset_y) = @_;
 
-    my $src_rect = SDL::Rect->new($self->pos->[0] - $map_offset_x, $self->pos->[1] - $map_offset_y, $self->size, $self->size);
+    my $src_rect = SDL::Rect->new(0, 0, $self->size, $self->size);
+    my $dst_rect = SDL::Rect->new($self->pos->[0] - $map_offset_x, $self->pos->[1] - $map_offset_y, $self->size, $self->size);
 
     my $aux_surface = TextureManager->instance->get('AUX_SURFACE');
     SDL::Video::fill_rect($aux_surface, $src_rect, SDL::Video::map_RGBA($aux_surface->format(), $self->red, 0, 0, $self->red));
-    SDL::Video::blit_surface($aux_surface, $src_rect, $display_surface, $src_rect);
+    SDL::Video::blit_surface($aux_surface, $src_rect, $display_surface, $dst_rect);
 
 }
 
