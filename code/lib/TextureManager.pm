@@ -68,14 +68,14 @@ sub get {
         }
     } elsif ($name eq 'AUX_SURFACE') {
         my $texture_data;
-        
+
         if (!exists $self->{textures}->{AUX_SURFACE}) {
             $texture_data = SDL::Surface->new(SDL_ANYFORMAT, 32, 32, SDL::Video::get_video_info->vfmt->BitsPerPixel);
             $self->{textures}->{AUX_SURFACE} = $texture_data;
         } else {
             $texture_data = $self->{textures}->{AUX_SURFACE};
         }
-       
+
         return $texture_data;
     } else {
         croak("Constant `$name` is not declared and could not be found into the synonyms.");

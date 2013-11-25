@@ -32,7 +32,8 @@ use TextureManager;
 use BadGuy;
 use RidingBlock;
 use CollisionDetector;
-use ParticlesChunk;
+use ParticlesChunkBloodSplatters;
+use ParticlesChunkCircles;
 
 SDL::init(SDL_INIT_VIDEO);
 
@@ -342,8 +343,14 @@ while (!$quit) {
         if ($test_destruction) {
                 say "SPACE";
                 #test me
-                my $particles_chunk = ParticlesChunk->new();
-                $particles_chunk->init($ch_pos_x, $ch_pos_y);
+                my $particles_chunk;
+                if (int(rand(2)) == 1) {
+                    $particles_chunk = ParticlesChunkBloodSplatters->new;
+                } else {
+                    $particles_chunk = ParticlesChunkCircles->new;
+                }
+
+                $particles_chunk->init($ch_pos_x, $ch_pos_y, 2);
                 push @particles_chunks_list, $particles_chunk;
 
                 #my $pos_x = $ch->pos->[0] + ($ch->step_x == 1 || $ch->slide == 1 ? 32 : $ch->step_x == -1 || $ch->slide == -1 ? -32 : 0);

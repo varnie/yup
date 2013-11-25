@@ -1,29 +1,26 @@
-package ParticlesChunk;
+package ParticlesChunkBase;
 
 use 5.010;
 use strict;
 use warnings;
 
 use Mouse;
-use base 'Class::Singleton';
-use File::Basename;
-use File::Spec;
 
 use SDL::Image;
 use SDL::Video;
 
-use Particle;
+use ParticleBase;
 
 has count => (
     is => 'ro',
     isa => 'Num',
     required => 1,
-    default => 120
+    default => 20
 );
 
 has items => (
     is => 'rw',
-    isa => 'ArrayRef[Particle]',
+    isa => 'ArrayRef[ParticleBase]',
     default => sub {[]}
 );
 
@@ -34,10 +31,7 @@ has is_dead => (
 );
 
 sub init {
-    my ($self, $center_x, $center_y) = @_;
-    foreach my $i (1..$self->count) {
-        push @{$self->items}, Particle->new(pos => [$center_x + int(rand(20)), $center_y + int(rand(20))]);
-    }
+    confess shift, " should have defined `update_index`";
 }
 
 sub draw {
