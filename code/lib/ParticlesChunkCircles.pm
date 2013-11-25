@@ -15,14 +15,14 @@ use ParticleCircle;
 sub init {
     my ($self, $center_x, $center_y, $radius) = @_;
 
-    my $degrees_per_item = 360 / $self->count;
+    my $degrees_per_item = int(360 / $self->count);
     foreach my $i (1..$self->count) {
-        my $cur_degrees = $degrees_per_item*$i;
 
         push @{$self->items}, ParticleCircle->new(
             pos => [$center_x + 16, $center_y],
-            degrees => $cur_degrees,
-            radius => $radius);
+            degrees => $degrees_per_item*$i,
+            radius => $radius,
+            size => 10);
     }
 }
 

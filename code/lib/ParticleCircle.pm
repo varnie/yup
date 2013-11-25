@@ -26,12 +26,6 @@ has radius => (
     required => 1
 );
 
-has ttl => (
-    is => 'rw',
-    isa => 'Num',
-    default => sub { int(rand(10)) + 90 }
-);
-
 has red => (
     is => 'rw',
     isa => 'Num',
@@ -68,7 +62,7 @@ sub update {
     $self->pos->[0] = $self->radius * cos($self->degrees);
     $self->pos->[1] = $self->radius * sin($self->degrees);
 
-    my $cur_ttl = $self->ttl($self->ttl-3);
+    my $cur_ttl = $self->ttl($self->ttl-2);
     $self->red(int(2.55*$cur_ttl));
     $self->size(int($cur_ttl/16.6));
 }
