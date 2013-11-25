@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<tiles-metainfo>
+
+	<tile>
+		<name>Cloud</name>
+		<filename>cloud_new1.png </filename>
+		<type></type>
+		<size>default</size>
+		<constraints>
+			<constraint></constraint>
+		</constraints>
+	</tile>
+
+</tiles-metainfo>
