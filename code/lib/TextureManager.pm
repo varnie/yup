@@ -4,12 +4,12 @@ use 5.010;
 use strict;
 use warnings;
 
-use Mouse;
 use base 'Class::Singleton';
+use Loop::Constants;
+use Mouse;
 use File::Basename;
 use File::Spec;
 use Carp qw/croak/;
-
 use SDL::Image;
 use SDL::Video;
 
@@ -62,15 +62,13 @@ sub get {
             } elsif ($name eq 'TILES') {
                 croak(SDL::get_error) if SDL::Video::set_color_key($texture_data, SDL_SRCCOLORKEY,  0);
             }
-            $self->{textures}->{$matched_key} = $texture_data;
-
-            return $texture_data;
+            return $self->{textures}->{$matched_key} = $texture_data;
         }
     } elsif ($name eq 'AUX_SURFACE') {
         my $texture_data;
 
         if (!exists $self->{textures}->{AUX_SURFACE}) {
-            $texture_data = SDL::Surface->new(SDL_ANYFORMAT, 32, 32, SDL::Video::get_video_info->vfmt->BitsPerPixel);
+            $texture_data = SDL::Surface->new(SDL_ANYFORMAT, $SPRITE_W, $SPRITE_H, SDL::Video::get_video_info->vfmt->BitsPerPixel);
             $self->{textures}->{AUX_SURFACE} = $texture_data;
         } else {
             $texture_data = $self->{textures}->{AUX_SURFACE};

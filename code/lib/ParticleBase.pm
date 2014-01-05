@@ -30,10 +30,10 @@ has blue => (
     default => 0
 );
 
-has pos => (
+has ['x', 'y'] => (
     is => 'rw',
-    isa => 'ArrayRef[Num]',
-    default => sub {[0, 0]}
+    isa => 'Num',
+    default => 0
 );
 
 has size => (
@@ -43,11 +43,11 @@ has size => (
 );
 
 sub draw {
-    confess shift, " should have defined `update_index`";
+    confess shift, " should have defined `draw`";
 }
 
 sub update {
-    confess shift, " should have defined `update_index`";
+    confess shift, " should have defined `update`";
 }
 
 no Mouse;

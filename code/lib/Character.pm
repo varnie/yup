@@ -4,28 +4,81 @@ use strict;
 use warnings;
 use 5.010;
 
-use Time::HiRes;
-
 use Mouse;
+use Time::HiRes;
 use TextureManager;
-use CollisionDetector;
-
 use SDL::Video;
-use Entity;
-use Movable;
-use Jumpable;
-extends 'Entity', 'Movable', 'Jumpable';
+use Camera;
+use AnimatedSprite;
+use Loop::Constants;
+use Inline with => 'SDL';
 
-use constant {
-    LOOK_AT_RIGHT => 0,
-    LOOK_AT_LEFT => 1,
-    LOOK_AT_ME => 2
-};
+extends 'AnimatedSprite';
 
-has cur_sprites => (
-    is => 'rw',
-    isa => 'SDL::Surface'
+has look_sprites => (
+    is => 'ro',
+    isa => 'ArrayRef[ArrayRef[Int]]',
+    default => sub {
+        [
+            [0, $SPRITE_W*2, $SPRITE_W, $SPRITE_H], #LOOK_AT_RIGHT
+            [0, $SPRITE_W,   $SPRITE_W, $SPRITE_H], #LOOK_AT_LEFT
+            [$SPRITE_W, 0, $SPRITE_W, $SPRITE_H] #IDLE
+        ]
+    }
 );
+
+has move_dt => (
+    is => 'rw',
+    isa => 'Num',
+    default => Time::HiRes::time
+);
+
+has step_x => (
+    is => 'rw',
+    isa => 'Int',
+    default => 0 #IDLE
+);
+
+has vx => (
+    is => 'rw',
+    isa => 'Num',
+    default => 0
+);
+
+has vy => (
+    is => 'rw',
+    isa => 'Num',
+    default => 0
+);
+
+has max_vx => (
+    is => 'rw',
+    isa => 'Num',
+    default => 350
+);
+
+has max_vy=> (
+    is => 'rw',
+    isa => 'Num',
+    default => 250
+);
+
+has acc_x => (
+    is => 'rw',
+    isa => 'Num',
+    default => 250
+);
+
+has 'jumping' => (
+    is => 'rw',
+    isa => 'Int',
+    default => 0
+);
+
+#has cur_sprites => (
+#    is => 'rw',
+#    isa => 'SDL::Surface'
+#);
 
 has damage_mode => (
     is => 'rw',
@@ -51,16 +104,6 @@ has show_damage => (
     default => 0
 );
 
-#new attribute
-has sprites_overlap => (
-    is => 'ro',
-    isa => 'SDL::Surface',
-    lazy => 1,
-    builder => '_build_sprites_overlap',
-    init_arg => undef
-);
-
-#new attribute
 has sprites_inverted => (
     is => 'ro',
     isa => 'SDL::Surface',
@@ -69,71 +112,13 @@ has sprites_inverted => (
     init_arg => undef
 );
 
-#new attribute
-has screen_w => (
-    is => 'rw',
-    isa => 'Num',
-    required => 1
-);
-
-#new attribute
-has screen_h => (
-    is => 'rw',
-    isa => 'Num',
-    required => 1
-);
-
-#new attribute
-has map_width => (
-    is => 'rw',
-    isa => 'Num',
-    required => 1
-);
-
-#new attribute
-has map_height => (
-    is => 'rw',
-    isa => 'Num',
-    required => 1
-);
-
-#new attribute
-has map_ref => (
-    is => 'rw',
-    isa => 'HashRef[Num]',
-    required => 1
-);
-
-#new attribute
-has riding_blocks_list_ref => (
-    is => 'rw',
-    isa => 'ArrayRef[RidingBlock]',
-    required => 1
-);
-
-#new attribute
 has move_key_hold => (
     is => 'rw',
     isa => 'Num',
     default => 0
 );
 
-#new attribute
 has key_hold_start_time => (
-    is => 'rw',
-    isa => 'Num',
-    default => 0
-);
-
-#new attribute
-has slide => (
-    is => 'rw',
-    isa => 'Num',
-    default => 0
-);
-
-#new attribute
-has aux => (
     is => 'rw',
     isa => 'Num',
     default => 0
@@ -145,208 +130,29 @@ has 'riding_block' => (
     default => undef
 );
 
-#new method
-sub attach_to {
-    my ($self, $riding_block) = @_;
-    $self->riding_block($riding_block);
-}
-
-#new method
-sub detach {
-    my ($self) = @_;
-    $self->riding_block(undef);
-}
-
-#new method
-sub reset_velocity {
-    shift->velocity(6);
-}
-
-#override Entity method
-sub calc_map_pos {
-    my ($self) = @_;
-    my ($pos_x, $pos_y) = @{$self->pos}[0..1];
-    my $x = (($pos_x < $self->screen_w/2) || ($self->screen_w >= $self->map_width)) ? $pos_x : $pos_x - $self->screen_w/2 > $self->map_width - $self->screen_w ? $pos_x - ($self->map_width - $self->screen_w) : $self->screen_w/2;
-
-    my $y = (($pos_y < $self->screen_h/2) || ($self->screen_h >= $self->map_height)) ? $pos_y : $pos_y - $self->screen_h/2 > $self->map_height - $self->screen_h ? $pos_y - ($self->map_height - $self->screen_h) : $self->screen_h/2;
-
-    @{$self->map_pos}[0..1] = ($x, $y);
-    return $self->map_pos;
-}
-
-#override
 sub draw {
-    my ($self, $display_surface_ref) = @_;
-    my $src = do {
-        if ($self->step_x) {
-            my $pattern = $self->look_sprites->[$self->step_x == 1 ? LOOK_AT_RIGHT : LOOK_AT_LEFT];
-            $pattern->[0] = 32*$self->sprite_index;
-            $pattern;
-        } elsif (!$self->slide) {
-            $self->look_sprites->[LOOK_AT_ME];
-        } else {
-            $self->look_sprites->[$self->slide == 1 ? LOOK_AT_RIGHT : LOOK_AT_LEFT];
+    my ($self, $display_surface, $map_x, $map_y) = @_;
+
+    if ($self->damage_mode) {
+        if (++$self->{cur_damage_counter} == 5) {
+            $self->show_damage($self->show_damage == 1 ? 0 : 1);
+            $self->cur_damage_counter(0);
         }
-    };
 
-    #check if Character intersects with animated water sprites
-    my $bounds = CollisionDetector->instance->strict_intersect_bounds($self->pos);
-    if ($bounds) {
-        my ($bounds_x, $bounds_y, $bounds_width, $bounds_height) = @{$bounds};
+        $display_surface->blit_by(
+            $self->show_damage ? $self->sprites_inverted : $self->img,
+            $self->cur_render_rect,
+            [$map_x-$self->half_w, $map_y-$self->half_h, $self->w, $self->h]);
 
-        my $map_pos = $self->calc_map_pos;
-        my ($ch_pos_x, $ch_pos_y) = @{$self->pos}[0..1];
-
-        if ($bounds_x == $ch_pos_x && $bounds_y == $ch_pos_y &&
-            $bounds_width == 32 && $bounds_height == 32) {
-
-            #full intersection
-
-            $display_surface_ref->blit_by($self->sprites_overlap, [$src->[0], $src->[1], 32, 32],
-                [$map_pos->[0], $map_pos->[1], 32, 32]);
-
-        } elsif ($bounds_x > $ch_pos_x &&
-            $bounds_y == $ch_pos_y &&
-            $bounds_height == 32) {
-
-            #y axises are equal and character stands lefter the sprite
-
-            #draw remained character's part
-            $display_surface_ref->blit_by($self->sprites, [$src->[0], $src->[1], 32-$bounds_width, 32],
-                [$map_pos->[0], $map_pos->[1], 32-$bounds_width, 32]);
-
-            #draw intersection's part
-            $display_surface_ref->blit_by($self->sprites_overlap, [$src->[0]+32-$bounds_width, $src->[1], $bounds_width, 32],
-                [$map_pos->[0]+32-$bounds_width, $map_pos->[1], $bounds_width, 32]);
-
-        } elsif ($bounds_x < $ch_pos_x+32 &&
-            $bounds_y == $ch_pos_y &&
-            $bounds_height == 32) {
-
-            #y axises are equal and character stands righter the sprite
-
-            #draw remained character's part
-            $display_surface_ref->blit_by($self->sprites,
-                [$src->[0]+$bounds_width, $src->[1], 32-$bounds_width,  32],
-                [$map_pos->[0]+$bounds_width, $map_pos->[1], 32-$bounds_width, 32]);
-
-            #draw intersection's part
-            $display_surface_ref->blit_by($self->sprites_overlap, [$src->[0], $src->[1], $bounds_width, 32],
-                [$map_pos->[0], $map_pos->[1], $bounds_width, 32]);
-
-        } elsif ($bounds_y > $ch_pos_y &&
-            $bounds_x == $ch_pos_x &&
-            $bounds_width == 32) {
-
-            #x axises are equal and character stands upper the sprite
-
-            #draw remained character's part
-            $display_surface_ref->blit_by($self->sprites, [$src->[0], $src->[1], 32, 32-$bounds_height],
-                [$map_pos->[0], $map_pos->[1], 32, 32-$bounds_height]);
-
-            #draw intersection's part
-            $display_surface_ref->blit_by($self->sprites_overlap, [$src->[0], $src->[1]+32-$bounds_height, 32, $bounds_height],
-                [$map_pos->[0], $map_pos->[1]+32-$bounds_height, 32, $bounds_height]);
-
-        } elsif ($bounds_y < $ch_pos_y + 32 &&
-            $bounds_x == $ch_pos_x &&
-            $bounds_width == 32) {
-
-            #x axises are equal and character stands lower the sprite
-
-            #draw remained character's part
-            $display_surface_ref->blit_by($self->sprites, [$src->[0], $src->[1]+$bounds_height, 32, 32-$bounds_height],
-                [$map_pos->[0], $map_pos->[1]+$bounds_height, 32, 32-$bounds_height]);
-
-            #draw intersection's part
-            $display_surface_ref->blit_by($self->sprites_overlap, [$src->[0], $src->[1], 32, $bounds_height],
-                [$map_pos->[0], $map_pos->[1], 32, $bounds_height]);
-
-        } else {
-            #x and y axises are different
-
-            if ($ch_pos_x == $bounds_x &&
-                $ch_pos_y == $bounds_y) {
-
-                #draw intersection's part
-                $display_surface_ref->blit_by($self->sprites_overlap, [$src->[0], $src->[1], $bounds_width, $bounds_height],
-                    [$map_pos->[0], $map_pos->[1], $bounds_width, $bounds_height]);
-
-                #draw remained character's part #1 below the intersection
-                $display_surface_ref->blit_by($self->sprites, [$src->[0], $src->[1]+$bounds_height, $bounds_width, 32-$bounds_height],
-                    [$map_pos->[0], $map_pos->[1]+$bounds_height, $bounds_width, 32-$bounds_height]);
-
-                #draw remained character's part #2 righter the intersection
-                $display_surface_ref->blit_by($self->sprites, [$src->[0]+$bounds_width, $src->[1], 32-$bounds_width, 32],
-                    [$map_pos->[0]+$bounds_width, $map_pos->[1], 32-$bounds_width, 32]);
-
-            } elsif ($ch_pos_x < $bounds_x &&
-                $ch_pos_y == $bounds_y) {
-
-                #draw intersection's part
-                $display_surface_ref->blit_by($self->sprites_overlap, [$src->[0]+32-$bounds_width, $src->[1], $bounds_width, $bounds_height],
-                    [$map_pos->[0]+32-$bounds_width, $map_pos->[1], $bounds_width, $bounds_height]);
-
-                #draw remained character's part #1 lower the intersection
-                $display_surface_ref->blit_by($self->sprites, [$src->[0]+32-$bounds_width, $src->[1]+$bounds_height, $bounds_width, 32-$bounds_height],
-                    [$map_pos->[0]+32-$bounds_width, $map_pos->[1]+$bounds_height, $bounds_width, 32-$bounds_height]);
-
-                #draw remained character's part #2 lefter the intersection
-                $display_surface_ref->blit_by($self->sprites, [$src->[0], $src->[1], 32-$bounds_width, 32],
-                    [$map_pos->[0], $map_pos->[1], 32-$bounds_width, 32]);
-
-            } elsif ($ch_pos_x < $bounds_x &&
-                $ch_pos_y < $bounds_y) {
-
-                #draw intersection's part
-                $display_surface_ref->blit_by($self->sprites_overlap, [$src->[0]+32-$bounds_width, $src->[1]+32-$bounds_height, $bounds_width, $bounds_height],
-                    [$map_pos->[0]+32-$bounds_width, $map_pos->[1]+32-$bounds_height, $bounds_width, $bounds_height]);
-
-                #draw remained character's part #1 upper the intersection
-                $display_surface_ref->blit_by($self->sprites, [$src->[0]+32-$bounds_width, $src->[1], $bounds_width, 32-$bounds_height],
-                    [$map_pos->[0]+32-$bounds_width, $map_pos->[1], $bounds_width, 32-$bounds_height]);
-
-                #draw remained character's part #2 lefter the intersection
-                $display_surface_ref->blit_by($self->sprites, [$src->[0], $src->[1], 32-$bounds_width, 32],
-                    [$map_pos->[0], $map_pos->[1], 32-$bounds_width, 32]);
-
-           } else {
-               #condition: $ch_pos_x == $bounds_x && $ch_pos_y < $bounds_y
-
-               #draw intersection's part
-               $display_surface_ref->blit_by($self->sprites_overlap, [$src->[0], $src->[1]+32-$bounds_height, $bounds_width, $bounds_height],
-                   [$map_pos->[0], $map_pos->[1]+32-$bounds_height, $bounds_width, $bounds_height]);
-
-               #draw remained character's part #1 upper the intersection
-               $display_surface_ref->blit_by($self->sprites, [$src->[0], $src->[1], $bounds_width, 32-$bounds_height],
-                   [$map_pos->[0], $map_pos->[1], $bounds_width, 32-$bounds_height]);
-
-               #draw remained character's part #2 righter the intersection
-               $display_surface_ref->blit_by($self->sprites, [$src->[0]+$bounds_width, $src->[1], 32-$bounds_width, 32],
-                   [$map_pos->[0]+$bounds_width, $map_pos->[1], 32-$bounds_width, 32]);
-
-           }
-        }
+        $self->damage_mode(0) unless --$self->{damage_duration};
     } else {
-        if ($self->damage_mode) {
-            my $damage_duration = $self->damage_duration;
-            my $cur_damage_counter = $self->cur_damage_counter;
-            $self->cur_damage_counter(++$cur_damage_counter);
-            if ($cur_damage_counter == 4) {
-                $self->show_damage($self->show_damage == 1 ? 0 : 1);
-                $self->cur_damage_counter(0);
-            }
-
-            $display_surface_ref->blit_by($self->show_damage ? $self->sprites_inverted : $self->sprites, $src, $self->calc_map_pos);
-            $self->damage_duration(--$damage_duration);
-            $self->damage_mode(0) unless $damage_duration;
-        } else {
-            $display_surface_ref->blit_by($self->sprites, $src, $self->calc_map_pos);
-        }
+        $display_surface->blit_by(
+            $self->img,
+            $self->cur_render_rect,
+            [$map_x-$self->half_w, $map_y-$self->half_h, $self->w, $self->h]);
     }
 }
 
-#new method
 sub handle_collision {
     my ($self) = @_;
 
@@ -357,335 +163,198 @@ sub handle_collision {
         $self->show_damage(1);
     }
 
-    my $sprites = $self->sprites;
-    my $sprites_overlap = $self->sprites_overlap;
+    handle_collision_c($self->img, $self->look_sprites);
 
-    if (SDL::Video::MUSTLOCK($sprites)) {
-        SDL::Video::lock_surface($sprites);
-    }
-    if (SDL::Video::MUSTLOCK($sprites_overlap)) {
-        SDL::Video::lock_surface($sprites_overlap);
-    }
+    ####HERE BELOW IS A PERL REWRITE
+    ####
+    ####
+    ####
+    ####
 
-    my $width = $sprites->pitch/4;
+    #my $img = $self->img;
 
-    my $R_mask = $sprites->format->Rmask;
-    #my $G_mask = $sprites->format->Gmask;
-    #my $B_mask = $sprites->format->Bmask;
+    #if (SDL::Video::MUSTLOCK($img)) {
+    #    SDL::Video::lock_surface($img);
+    #}
 
-    foreach my $look_sprites (@{$self->look_sprites}) {
-        my $base = $look_sprites->[1]*$width;
-        my $cur = $base;
-        foreach my $y (0..32) {
-            my $index = ($cur += $width);
-            foreach my $x (0..32*3) {
-                my $val = $sprites->get_pixel(++$index);
+    #my $width = $img->pitch/4;
 
-                if ($val != 0xFFFFFF) {
+    #my $R_mask = $img->format->Rmask;
+    ##my $G_mask = $img->format->Gmask;
+    ##my $B_mask = $img->format->Bmask;
 
-                    my $r = $val & $R_mask;
-                    #my $g = ($val & $G_mask);
-                    #my $b = ($val & $B_mask);
-                    if ($r < $R_mask) {
+    #foreach my $look_sprites (@{$self->look_sprites}) {
+    #    my $base = $look_sprites->[1]*$width;
 
-                        $val = ($r+0x10000) + ($val-$r);
-                        $sprites->set_pixels($index, $val);
-                        $sprites_overlap->set_pixels($index, $val);
-                    }
-                }
-            }
-        }
-    }
+    #    my $cur = $base;
+    #    my $val;
+    #    my $index = $cur;
 
-    if (SDL::Video::MUSTLOCK($sprites)) {
-        SDL::Video::unlock_surface($sprites);
-    }
-    if (SDL::Video::MUSTLOCK($sprites_overlap)) {
-        SDL::Video::unlock_surface($sprites_overlap);
-    }
+    #    foreach my $y (0..$SPRITE_H) {
+    #        foreach my $x (0..$SPRITE_W*3) {
+    #            $val = $img->get_pixel(++$index);
+    #            if ($val != 0xFFFFFF) {
+    #                my $r = $val & $R_mask;
+    #                #my $g = ($val & $G_mask);
+    #                #my $b = ($val & $B_mask);
+    #                if ($r < $R_mask) {
+    #                    $img->set_pixels($index, ($r+0x10000)+($val-$r));
+    #                }
+    #            }
+    #        }
+    #        $index = ($cur += $width);
+    #    }
+    #}
+
+    #if (SDL::Video::MUSTLOCK($img)) {
+    #    SDL::Video::unlock_surface($img);
+    #}
+
+    ####
+    ####
+    ####
+    ####
+    ####
 }
 
-#override Movable method
 sub update_pos {
     my ($self, $new_dt) = @_;
-    my ($x, $y) = @{$self->pos}[0..1];
 
-    my $test_block = 0;
+    my $dt_diff = $new_dt - $self->move_dt;
 
-    #TODO:
-    if ($self->riding_block) {
-        if ($self->riding_block->is_horizontal_move) {
-            $self->pos->[0] = $x = $x +
-                ($self->riding_block->moving_type == RidingBlock->MOVEMENT->{LEFT} ? -$self->riding_block->step_x_speed : $self->riding_block->step_x_speed);
-            $self->pos->[1] = $y = $self->riding_block->pos->[1] - 32;
-        } else {
-            $self->pos->[1] = $y = $self->riding_block->pos->[1] - 32;
+    #if we are moving horizontally
+    if ($self->move_key_hold) {
+        if ($self->vx < 0 && $self->step_x == 1) {
+            $self->{vx} += abs($self->vx*0.4);
         }
-
-        if ($self->riding_block && ($self->step_x || $self->slide)) {
-            my $test_block1 = $self->is_riding_block_val($x-32, $y+32);
-            my $test_block2 = $self->is_riding_block_val($x, $y+32);
-
-            if ($test_block1 && $test_block2 && $test_block1 != $test_block2) {
-                my $move_right = $self->step_x == 1 || $self->slide == 1;
-                if ($move_right) {
-                    if ($test_block2->is_horizontal_move) {
-                        $test_block = $test_block2;
-                    }
-                } else {
-                    if ($test_block1->is_horizontal_move) {
-                        $test_block = $test_block1;
-                    }
-                }
-
-            } elsif ($test_block1 && $test_block2 && $test_block1 == $test_block2) {
-                if ($test_block1->is_horizontal_move) {
-                    $test_block = $test_block1;
-                }
-            } elsif ($test_block1 && !$test_block2) {
-                if ($test_block1->is_horizontal_move) {
-                    $test_block = $test_block1;
-                }
-            } elsif ($test_block2 && !$test_block1) {
-                if ($test_block2->is_horizontal_move) {
-                    $test_block = $test_block2;
-                }
-            }
+        if ($self->vx > 0 && $self->step_x == -1) {
+            $self->{vx} -= $self->vx*0.4;
         }
+        my $acc_x = $self->acc_x*$dt_diff;
+        $self->{vx} += $self->step_x*$acc_x;
     } else {
-        $test_block = $self->is_riding_block_val($x, $y);
-    }
-    if ($test_block && (!$self->riding_block || $self->riding_block != $test_block)) {
-
-        #almost works
-        if ($test_block->is_horizontal_move && $test_block->pos->[1] != $self->pos->[1]) {
-            $self->attach_to($test_block);
-        } else {
-
-            if ($test_block->pos->[0] > $x) {
-                $self->pos->[0] = $x = $x - 4;
-
-                if ($test_block = $self->is_riding_block_val($x, $y)) {
-                    if ($test_block->is_horizontal_move) {
-                        $self->attach_to($test_block);
-                    }
-                } elsif (!$self->is_map_val($x, $y+64)) {
-                    $self->init_failing;
-
-                    $self->detach();
-                }
-            } elsif ($test_block->pos->[0] < $x) {
-                $self->pos->[0] = $x = $x + 4;
-
-                if ($test_block = $self->is_riding_block_val($x, $y)) {
-                    if ($test_block->is_horizontal_move) {
-                        $self->attach_to($test_block);
-                    }
-                } elsif (!$self->is_map_val($x, $y+64)) {
-                    $self->init_failing;
-
-                    $self->detach();
-                }
-            }
+        my $acc_x = $self->acc_x*$dt_diff*5;
+        if ($self->vx > 0) {
+            $self->{vx} -= $acc_x;
+            $self->vx(0) if $self->vx < 0;
+        } elsif ($self->vx < 0) {
+            $self->{vx} += $acc_x;
+            $self->vx(0) if $self->vx > 0;
         }
     }
 
-    if ($self->step_x || $self->slide) {
-        my $new_x = $x;
+    $self->vx($self->max_vx) if $self->vx > $self->max_vx;
+    $self->vx(-$self->max_vx) if $self->vx < -$self->max_vx;
 
-        if ($self->step_x) {
-            my $add_x = $self->move_key_hold ? 2.8*($new_dt - $self->key_hold_start_time) : 0;
-            $add_x = 4 if $add_x > 4;
-            $new_x += $self->step_x_speed*$self->step_x*($new_dt - $self->move_dt)*30 + $add_x*$self->step_x;
-            $self->aux($add_x);
-        } else {
-            my $new_aux = $self->aux - 0.5*($new_dt - $self->key_hold_start_time);
-            if ($new_aux < 0) {
-                $new_aux = 0;
-            } else {
-                $new_x += $self->slide*$new_aux;
-            }
-
-            $self->aux($new_aux);
-        }
-
-
-        if ($new_x != $x && $new_x >= 0 && $new_x <= $self->map_width-32) {
-
-            if (!($self->jumping && $y % 32 == 0 && $self->is_map_val($x, $y) && $self->is_map_val($x, $y-1) && $self->is_map_val($x+32, $y))) {
-
-                if ($self->step_x == 1 || $self->slide == 1) {
-                    my $block = $self->is_riding_block_val($new_x, $y);
-                    if (!$block) {
-                        if (!$self->is_map_val($new_x+32, $y+($self->jumping ? 0 : 32))) {
-                            $self->pos->[0] = $x = $new_x;
-                        } else {
-                            $self->pos->[0] = $x = 32*(int($new_x/32));
-                        }
-                    }
-                } elsif ($self->step_x == -1 || $self->slide == -1) {
-                    my $block = $self->is_riding_block_val($new_x, $y);
-                    if (!$block) {
-                        if (!$self->is_map_val($new_x, $y+($self->jumping ? 0 : 32))) {
-                            $self->pos->[0] = $x = $new_x;
-                        } else {
-                            $self->pos->[0] = $x = 32*(int($new_x/32)+1);
-                        }
-                    }
-                }
-            }
-
-            #init failing
-            if (!$self->jumping && !$self->riding_block) {
-                if ((($self->step_x == 1 || $self->slide == 1) && !$self->is_map_val($x+12, $y+64)) ||
-                    (($self->step_x == -1 || $self->slide == -1) && !$self->is_map_val($x+20, $y+64))
-                ) {
-                    $self->init_failing;
-                }
-            }
-        }
-
-        $self->slide(0) unless $self->aux;
-    }
-
-    if ($self->riding_block) {
-        if (($self->step_x == 1 || $self->slide == 1) && !$self->is_riding_block_val($x+6, $y+32) ||
-            ($self->step_x == -1 || $self->slide == -1) && !$self->is_riding_block_val($x-6, $y+32)) {
-            $self->detach();
-            $self->init_failing;
-        }
-    }
-
-    $self->move_dt($new_dt);
+    my $new_pos_x = $self->x + $self->vx*$dt_diff;
+    my $new_pos_y = $self->y;
 
     if ($self->jumping) {
+        $new_pos_y -= $self->vy*$dt_diff;
+    }
 
-        if (!$self->velocity) {
-            # failing
-
-            my $new_y = 5 + $y + 9*(($new_dt - $self->jump_dt)**2);
-            my ($test_y, $catched_thru_pass) = ($y, 0);
-
-            my $riding_block;
-
-            while ($test_y < $new_y) {
-
-                if (!$self->step_x && !$self->slide) {
-                    if ($self->is_map_val($x, $test_y)) {
-                        $self->pos->[0] = $x = (1 + int($x/32)) * 32;
-                    } elsif ($self->is_map_val($x+32, $test_y)) {
-                        $self->pos->[0] = $x = int($x/32) * 32;
-                    } elsif ($self->is_riding_block_val($x, $test_y+32) && !$self->is_riding_block_val($x+12, $test_y+32)) {
-                        $self->pos->[0] = $x = 32*(1+ int($x/32));
-                        $self->detach();
-                    } elsif ($self->is_riding_block_val($x, $test_y+32) && !$self->is_riding_block_val($x-12, $test_y+32)) {
-                        $self->pos->[0] = $x = 32*int($x/32);
-                        $self->detach();
-                    }
-                }
-
-                if ($self->is_map_val($x+16, $test_y+32) || (($riding_block = $self->is_riding_block_val($x, $test_y+32)) != 0)) {
-                    $self->jumping(0);
-
-                    if ($riding_block) {
-                        if (!$self->riding_block || $self->riding_block != $riding_block) {
-                            $self->attach_to($riding_block);
-                        }
-                    } else {
-                        $self->pos->[1] = $y = int($test_y - $test_y%32);
-                    }
-
-                    $catched_thru_pass = 1;
-                    last;
-                } else {
-                    $test_y += 8;
-                }
-            }
-
-            if (!$catched_thru_pass) {
-                $self->pos->[1] = $y = $new_y;
-            }
+    if ($self->riding_block) {
+        if ($self->riding_block->is_horizontal_move) {
+            $new_pos_x += $self->riding_block->step_speed*$dt_diff*($self->riding_block->moving_type == $MOVEMENT->{LEFT} ? -1 : 1);
         } else {
-            # jumping up
-
-            if ($self->riding_block) {
-                $self->detach();
-            }
-
-            if ($y % 32 == 0 && $self->is_map_val($x, $y) && $self->is_map_val($x, $y-1) && $self->is_map_val($x+32, $y)) {
-                $self->jumping(0);
-            } else {
-
-                my $new_velocity = $self->velocity - 1.5*($new_dt - $self->jump_dt);
-                $new_velocity = 0 if $new_velocity < 0;
-
-                my $new_y = $y - $new_velocity;
-                if (!($self->is_map_val($x, $new_y) || $self->is_map_val($x+31, $new_y) || $self->is_riding_block_val($x, $new_y))) {
-                    $self->pos->[1] = $y = $new_y;
-                    $self->velocity($new_velocity);
-                } else {
-                    $self->velocity(0);
-                }
-            }
+            $new_pos_y += $self->riding_block->step_speed*$dt_diff*($self->riding_block->moving_type == $MOVEMENT->{UP} ? -1 : 1);
         }
-    }
-}
-
-#new method
-sub is_map_val {
-    my $self = shift;
-    return exists $self->map_ref->{int($_[0]/32) + int(($self->map_height-$_[1])/32)*($self->map_width/32)};
-}
-
-#new method
-sub is_riding_block_val {
-    my ($self, $x, $y) = @_;
-
-    foreach my $riding_block (@{$self->riding_blocks_list_ref}) {
-        my ($riding_block_x, $riding_block_y) = @{$riding_block->pos}[0..1];
-        if (abs($x - $riding_block_x) < 32 &&
-            abs($y - $riding_block_y) < 32) {
-
-            return $riding_block;
-        }
+    } else {
+        $self->{vy} -= $GRAVITY*$dt_diff;
+        $new_pos_y -= $self->vy*$dt_diff;
     }
 
-    return 0;
+    #positions to be checked
+    $self->newx($new_pos_x);
+    $self->newy($new_pos_y);
+
+    #update the move_dt
+    $self->move_dt($new_dt);
 }
 
-#new method
-sub init_failing {
-    my ($self) = @_;
-    
-    $self->jumping(1);
-    $self->velocity(0);
-    $self->jump_dt(Time::HiRes::time);
-}
-
-#override Movable method
 sub update_index {
     my ($self, $new_dt) = @_;
-    if ($new_dt - $self->sprite_dt >= 0.1) {
+
+    if ($new_dt - $self->sprite_dt >= $self->speed_change_dt) {
         $self->sprite_dt($new_dt);
-        if (++$self->{sprite_index} == 3) {
+        if (++$self->{sprite_index} == $self->sprites_count) {
             $self->{sprite_index} = 0;
+        }
+
+        if ($self->step_x) {
+            $self->render_rect($self->look_sprites->[$self->step_x == 1 ? $LOOK_AT_RIGHT : $LOOK_AT_LEFT]);
+            $self->{cur_render_rect} = [@{$self->render_rect}];
+            $self->cur_render_rect->[0] += $SPRITE_W*$self->sprite_index;
+        } else {
+            $self->render_rect($self->look_sprites->[$LOOK_AT_ME]);
+            $self->{cur_render_rect} = [@{$self->render_rect}];
+            $self->cur_render_rect->[0] = $SPRITE_W;
         }
     }
 }
 
-#override
-sub _build_sprites {
+sub _build_img {
     TextureManager->instance->get('MAIN_CHARACTER');
 }
 
-#new method
-sub _build_sprites_overlap {
-    return TextureManager->instance->get('MAIN_CHARACTER_OVERLAP');
+sub _build_sprites_inverted {
+    TextureManager->instance->get('MAIN_CHARACTER_INVERTED');
 }
 
-#new method
-sub _build_sprites_inverted {
-    return TextureManager->instance->get('MAIN_CHARACTER_INVERTED');
+use Inline C => <<'END';
+void handle_collision_c(SDL_Surface *img, SV *sv_look_sprites) {
+
+    const int R_mask = img->format->Rmask;
+    const int width = img->w;
+
+    AV *av_look_sprites = (AV *) SvRV(sv_look_sprites);
+    const int look_sprites_count = av_top_index(av_look_sprites);
+
+    if (SDL_MUSTLOCK(img)) {
+        SDL_LockSurface(img);
+    }
+
+    int i;
+    for (i = 0; i <= look_sprites_count; ++i) {
+        SV **sv_look_sprite = av_fetch(av_look_sprites, i, 0);
+        AV *av_sprites = (AV *) SvRV(*sv_look_sprite);
+
+        SV **value = av_fetch(av_sprites, 1, 0);
+        const int base = SvIV(*value)*width;
+
+        //show must go on!
+        int cur = base;
+        int val;
+        int index = cur;
+
+        int y, x;
+        for (y = 0; y <= 32; ++y) {
+            for (x = 0; x <= 32*3; ++x) {
+                ++index;
+                val = *((unsigned int*)img->pixels + index);
+                if (val != 0xFFFFFF) {
+                    const int r = val & R_mask;
+                    if (r < R_mask) {
+                        ((unsigned int*) img->pixels)[index] = (r+0x10000)+(val-r);
+                    }
+                }
+            }
+
+            index = (cur += width);
+        }
+    }
+
+    if (SDL_MUSTLOCK(img)) {
+        SDL_UnlockSurface(img);
+    }
+}
+END
+
+sub BUILD {
+    my ($self) = @_;
+
+    $self->speed_change_dt(0.1);
+    $self->sprites_count(3); #3 per animation
 }
 
 no Mouse;

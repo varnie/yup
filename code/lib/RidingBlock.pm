@@ -5,28 +5,18 @@ use warnings;
 use 5.010;
 
 use Time::HiRes;
-
 use Mouse;
 use Moose::Util::TypeConstraints;
 use TextureManager;
-use CollisionDetector;
-
 use SDL::Video;
-use Entity;
-use Movable;
-extends 'Entity', 'Movable';
-
-use constant MOVEMENT => {
-    UP => 1,
-    DOWN => 2,
-    LEFT => 3,
-    RIGHT => 4 
-};
+use Loop::Constants;
+use Sprite;
+extends 'Sprite';
 
 has moving_type => (
     is => 'rw',
-    isa => enum([values(MOVEMENT)]),
-    default => MOVEMENT->{UP}
+    isa => enum([values($MOVEMENT)]),
+    default => $MOVEMENT->{UP}
 );
 
 has duration => (
@@ -40,103 +30,83 @@ has initial_pos => (
     isa => 'ArrayRef[Num]'
 );
 
-#override Movable attribute
-has look_sprites => (
-    is => 'rw',
-    isa => 'ArrayRef[ArrayRef[Num]]',
-    default => sub {[ [32*7, 0, 32, 32] ]}
-);
-
-has step_x_speed => (
+has step_speed => (
     is => 'rw',
     isa => 'Num',
-    default => 2
+    default => 100
 );
 
-#override Movable method
-sub update_pos {
-    my ($self) = @_;
+has move_dt => (
+    is => 'rw',
+    isa => 'Num',
+    default => Time::HiRes::time
+);
 
+has '+render_rect' => (
+    default => sub { [$SPRITE_W*7, 0, $SPRITE_W, $SPRITE_H] }
+);
+
+sub update_pos {
+    my ($self, $new_dt) = @_;
+
+    my $dt_diff = $new_dt - $self->move_dt;
     my $half_duration = $self->duration/2;
 
-    my $is_vertical_move;
-
-    if ($self->moving_type == MOVEMENT->{UP}) {
-        #UP
-
-        $is_vertical_move = 1;
-
-        $self->pos->[1] -= $self->step_x_speed;
-        if ($self->pos->[1] <= $self->initial_pos->[1] - $half_duration) {
-            $self->pos->[1] = $self->initial_pos->[1] - $half_duration;
-            $self->moving_type(MOVEMENT->{DOWN});
+    if ($self->moving_type == $MOVEMENT->{UP}) {
+        $self->y($self->y - $self->step_speed*$dt_diff);
+        if ($self->y <= $self->initial_pos->[1] - $half_duration) {
+            $self->y($self->initial_pos->[1] - $half_duration);
+            $self->moving_type($MOVEMENT->{DOWN});
         }
-    } elsif ($self->moving_type == MOVEMENT->{DOWN}) {
-        #DOWN
+    } elsif ($self->moving_type == $MOVEMENT->{DOWN}) {
+        $self->y($self->y + $self->step_speed*$dt_diff);
 
-        $is_vertical_move = 1;
-
-        $self->pos->[1] += $self->step_x_speed;
-
-        if ($self->pos->[1] >= $self->initial_pos->[1] + $half_duration) {
-            $self->pos->[1] = $self->initial_pos->[1] + $half_duration;
-            $self->moving_type(MOVEMENT->{UP});
+        if ($self->y >= $self->initial_pos->[1] + $half_duration) {
+            $self->y($self->initial_pos->[1] + $half_duration);
+            $self->moving_type($MOVEMENT->{UP});
         }
-    } elsif ($self->moving_type == MOVEMENT->{LEFT}) {
-        #LEFT
+    } elsif ($self->moving_type == $MOVEMENT->{LEFT}) {
+        $self->x($self->x - $self->step_speed*$dt_diff);
 
-        $is_vertical_move = 0;
-
-        $self->pos->[0] -= $self->step_x_speed;
-
-        if ($self->pos->[0] <= $self->initial_pos->[0] - $half_duration) {
-            $self->pos->[0] = $self->initial_pos->[0] - $half_duration;
-            $self->moving_type(MOVEMENT->{RIGHT});
+        if ($self->x <= $self->initial_pos->[0] - $half_duration) {
+            $self->x($self->initial_pos->[0] - $half_duration);
+            $self->moving_type($MOVEMENT->{RIGHT});
         }
     } else {
-        #RIGHT
+        $self->x($self->x + $self->step_speed*$dt_diff);
 
-        $is_vertical_move = 0;
-
-        $self->pos->[0] += $self->step_x_speed;
-
-        if ($self->pos->[0] >= $self->initial_pos->[0] + $half_duration) {
-            $self->pos->[0] = $self->initial_pos->[0] + $half_duration;
-            $self->moving_type(MOVEMENT->{LEFT});
+        if ($self->x >= $self->initial_pos->[0] + $half_duration) {
+            $self->x($self->initial_pos->[0] + $half_duration);
+            $self->moving_type($MOVEMENT->{LEFT});
         }
     }
+
+    #update the move_dt
+    $self->move_dt($new_dt);
 }
 
-#override Entity method
-sub calc_map_pos {
-    my ($self, $map_offset_x, $map_offset_y) = @_;
-    my ($pos_x, $pos_y) = @{$self->pos}[0..1];
-
-    @{$self->map_pos}[0..1] = ($pos_x-$map_offset_x, $pos_y-$map_offset_y);
-    return $self->map_pos;
-}
-
-#override
 sub draw {
-    my ($self, $display_surface_ref, $map_offset_x, $map_offset_y) = @_;
-    $display_surface_ref->blit_by($self->sprites, $self->look_sprites->[0], $self->calc_map_pos($map_offset_x, $map_offset_y));
+    my ($self, $display_surface, $map_offset_x, $map_offset_y) = @_;
+    $display_surface->blit_by(
+        $self->img,
+        $self->render_rect,
+        [$self->x-$self->half_w-$map_offset_x, $self->y-$self->half_h-$map_offset_y, $self->w, $self->h]);
 }
 
-#new method
 sub is_horizontal_move {
     my ($self) = @_;
-    return $self->moving_type == MOVEMENT->{LEFT} || $self->moving_type == MOVEMENT->{RIGHT};
+    return $self->moving_type == $MOVEMENT->{LEFT} || $self->moving_type == $MOVEMENT->{RIGHT};
 }
 
-sub _build_sprites {
-    return TextureManager->instance->get('TILES');
+sub _build_img {
+    TextureManager->instance->get('TILES');
 }
 
 around BUILDARGS => sub {
-
     my ($orig, $class, %args) = @_;
+
     if (!exists($args{initial_pos})) {
-        $args{initial_pos} = [@{$args{pos}}];
+        $args{initial_pos} = [$args{x}, $args{y}];
     }
 
     return $class->$orig(%args);

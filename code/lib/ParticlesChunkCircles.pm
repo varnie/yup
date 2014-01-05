@@ -5,13 +5,10 @@ use strict;
 use warnings;
 
 use Mouse;
-
+use ParticleCircle;
 use ParticlesChunkBase;
 extends 'ParticlesChunkBase';
 
-use ParticleCircle;
-
-#override method
 sub init {
     my ($self, $center_x, $center_y, $radius) = @_;
 
@@ -19,7 +16,8 @@ sub init {
     foreach my $i (1..$self->count) {
 
         push @{$self->items}, ParticleCircle->new(
-            pos => [$center_x + 16, $center_y],
+            x => $center_x,
+            y => $center_y,
             degrees => $degrees_per_item*$i,
             radius => $radius,
             size => 10);

@@ -5,10 +5,8 @@ use strict;
 use warnings;
 
 use Mouse;
-
 use SDL::Image;
 use SDL::Video;
-
 use TextureManager;
 use ParticleBase;
 extends 'ParticleBase';
@@ -28,12 +26,11 @@ has red => (
     }
 );
 
-#override method
 sub draw {
     my ($self, $display_surface, $map_offset_x, $map_offset_y) = @_;
 
     my $src_rect = SDL::Rect->new(0, 0, $self->size, $self->size);
-    my $dst_rect = SDL::Rect->new($self->pos->[0] - $map_offset_x, $self->pos->[1] - $map_offset_y, $self->size, $self->size);
+    my $dst_rect = SDL::Rect->new($self->x - $map_offset_x, $self->y - $map_offset_y, $self->size, $self->size);
 
     my $aux_surface = TextureManager->instance->get('AUX_SURFACE');
     state $aux_surface_format = $aux_surface->format;
@@ -42,11 +39,10 @@ sub draw {
     SDL::Video::blit_surface($aux_surface, $src_rect, $display_surface, $dst_rect);
 }
 
-#override method
 sub update {
-    my ($self) = (@_);
+    my ($self) = @_;
 
-    $self->pos->[1] += int(rand($self->size/2))+$_[0]->size;
+    $self->{y} += int(rand($self->size/2))+$_[0]->size;
     my $cur_ttl = $self->ttl($self->ttl-int(rand(4)));
     $self->red(int(2.55*$cur_ttl));
     $self->size(int($cur_ttl/16.6));
