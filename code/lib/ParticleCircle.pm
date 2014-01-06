@@ -66,7 +66,7 @@ sub update {
     $self->{x} = $self->radius * $self->cos_val;
     $self->{y} = $self->radius * $self->sin_val;
 
-    my $cur_ttl = ($self->{ttl} -= 2);
+    my $cur_ttl = ($self->{ttl} -= 4);
     $self->red(int(2.55*$cur_ttl));
     $self->size(int($cur_ttl/16.6));
 }

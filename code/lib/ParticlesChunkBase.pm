@@ -39,7 +39,7 @@ has sprite_dt => (
 has speed_change_dt => (
     is => 'rw',
     isa => 'Num',
-    default => 0.16,
+    default => 0.05
 );
 
 sub init {
@@ -48,29 +48,28 @@ sub init {
 
 sub draw {
     my ($self, $display_surface, $map_offset_x, $map_offset_y) = @_;
-    foreach my $item (@{$self->items}) {
-        $item->draw($display_surface, $map_offset_x, $map_offset_y);
+    foreach (@{$self->items}) {
+        if ($_->ttl > 0) {
+            $_->draw($display_surface, $map_offset_x, $map_offset_y);
+        }
     }
 }
 
 sub update {
     my ($self, $new_dt) = @_;
 
-    if ($new_dt - $self->sprite_dt >= 0.05) {
+    if ($new_dt - $self->sprite_dt >= $self->speed_change_dt) {
         $self->sprite_dt($new_dt);
 
-        my $i = 0;
-        while ($i <= $#{$self->items}) {
-            my $item = @{$self->items}[$i];
-            $item->update;
-            if ($item->ttl <= 0) {
-                splice @{$self->items}, $i, 1;
-            } else {
-                ++$i;
+        my $alive_cnt = 0;
+        foreach (@{$self->items}) {
+            if ($_->ttl > 0) {
+                $_->update;
+                ++$alive_cnt;
             }
         }
 
-        $self->is_dead(1) unless @{$self->items};
+        $self->is_dead(1) if $alive_cnt < $#{$self->items};
     }
 }
 

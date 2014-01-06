@@ -42,8 +42,8 @@ sub draw {
 sub update {
     my ($self) = @_;
 
-    $self->{y} += int(rand($self->size/2))+$_[0]->size;
-    my $cur_ttl = $self->ttl($self->ttl-int(rand(4)));
+    $self->{y} += int(rand($self->size/2))+$self->size;
+    my $cur_ttl = ($self->{ttl} -= int(rand(4)));
     $self->red(int(2.55*$cur_ttl));
     $self->size(int($cur_ttl/16.6));
 }
