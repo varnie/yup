@@ -69,7 +69,7 @@ sub update {
             }
         }
 
-        $self->is_dead(1) if $alive_cnt < $#{$self->items};
+        $self->is_dead(1) unless $alive_cnt;
     }
 }
 

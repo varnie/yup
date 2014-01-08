@@ -107,6 +107,8 @@ sub run {
                         $self->ch->jumping(1);
                         $self->ch->vy($self->ch->max_vy);
                     }
+                } elsif ($key_sym == SDLK_b) {
+                    $self->lvl->make_boom;
                 }
             } elsif ($e->type == SDL_KEYUP) {
                 my $key_sym = $e->key_sym;

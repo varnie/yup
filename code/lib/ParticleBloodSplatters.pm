@@ -11,9 +11,7 @@ use TextureManager;
 use ParticleBase;
 extends 'ParticleBase';
 
-has ttl => (
-    is => 'rw',
-    isa => 'Num',
+has '+ttl' => (
     default => sub { int(rand(75)) + 25 }
 );
 

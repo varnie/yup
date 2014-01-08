@@ -69,9 +69,26 @@ sub get {
 
         if (!exists $self->{textures}->{AUX_SURFACE}) {
             $texture_data = SDL::Surface->new(SDL_ANYFORMAT, $SPRITE_W, $SPRITE_H, SDL::Video::get_video_info->vfmt->BitsPerPixel);
+            $texture_data = SDL::Video::display_format($texture_data);
+            croak(SDL::get_error) unless $texture_data;
+
             $self->{textures}->{AUX_SURFACE} = $texture_data;
         } else {
             $texture_data = $self->{textures}->{AUX_SURFACE};
+        }
+
+        return $texture_data;
+    } elsif ($name eq 'AUX_SURFACE_FOR_BOOM') {
+        my $texture_data;
+
+        if (!exists $self->{textures}->{AUX_SURFACE_FOR_BOOM}) {
+            $texture_data = SDL::Surface->new(SDL_ANYFORMAT & ~(SDL_SRCALPHA), 2, 2, SDL::Video::get_video_info->vfmt->BitsPerPixel);
+            $texture_data = SDL::Video::display_format($texture_data);
+            croak(SDL::get_error) unless $texture_data;
+
+            $self->{textures}->{AUX_SURFACE_FOR_BOOM} = $texture_data;
+        } else {
+            $texture_data = $self->{textures}->{AUX_SURFACE_FOR_BOOM};
         }
 
         return $texture_data;
