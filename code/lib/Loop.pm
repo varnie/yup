@@ -81,7 +81,8 @@ sub run {
     my $frames_cnt = 0;
     my $fps = 0;
     my $last_iteration_time = time;
-    my $time_passed = time;
+    my $time_passed = $last_iteration_time;
+    $self->ch->move_dt($time_passed);
     my $updates_cnt = 0;
     my $now;
 
