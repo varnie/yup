@@ -215,15 +215,20 @@ sub make_boom {
     my ($self) = @_;
 
     my $cur_render_rect = $self->ch->cur_render_rect;
-    my @rects;
-    for (my $x = 0; $x < $SPRITE_W; $x += 2) {
-        for (my $y = 0; $y < $SPRITE_H; $y += 2) {
-            push @rects, SDL::Rect->new($cur_render_rect->[0] + $x, $cur_render_rect->[1] + $y, 2, 2);
+    my $size = 2;
+    my @pos;
+    for (my $x = 0; $x < $SPRITE_W; $x += $size) {
+        for (my $y = 0; $y < $SPRITE_H; $y += $size) {
+            push @pos, [$cur_render_rect->[0] + $x, $cur_render_rect->[1] + $y];
         }
     }
 
-    my $particles_chunk = ParticlesChunkBoom->new;
-    $particles_chunk->init($self->ch->x, $self->ch->y, \@rects, $self->ch->img);
+    my $particles_chunk = ParticlesChunkBoom->new(
+        'x' => $self->ch->x, 
+        'y' => $self->ch->y, 
+        'img' => $self->ch->img,
+        'size' => $size);
+    $particles_chunk->init($self->ch->x, $self->ch->y, \@pos, $self->ch->img, $size);
     push @{$self->particles_chunks_list}, $particles_chunk;
 }
 
