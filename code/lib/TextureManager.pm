@@ -39,7 +39,7 @@ sub get {
     my ($self, $name) = @_;
     my $re = qr/(^\Q$name\E(@[^@]+)*$)|(@\Q$name\E(@[^@]+)*$)/;
 
-    my ($matched_key) = grep { /$re/ } keys TEXTURE_NAMES;
+    my ($matched_key) = grep { /$re/ } keys %{TEXTURE_NAMES()};
 
     if ($matched_key) {
         if (exists $self->{textures}->{$matched_key}) {

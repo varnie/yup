@@ -15,7 +15,7 @@ extends 'Sprite';
 
 has moving_type => (
     is => 'rw',
-    isa => enum([values($MOVEMENT)]),
+    isa => enum([values(%{$MOVEMENT})]),
     default => $MOVEMENT->{UP}
 );
 

@@ -106,7 +106,7 @@ sub draw {
     state $x_per_screen = int($self->screen_w/$SPRITE_W);
     state $y_per_screen = int($self->screen_h/$SPRITE_H);
 
-    foreach my $k (keys $self->animated_sprites) {
+    foreach my $k (keys %{$self->animated_sprites}) {
         my $x = $k % $x_per_row;
         if ($x >= $start_x && $x <= $start_x+$x_per_screen+$SPRITE_W) {
             my $y = ($k-$x)/$x_per_row;
@@ -168,7 +168,7 @@ sub draw {
 sub update {
     my ($self, $new_time) = @_;
 
-    foreach (values $self->animated_sprites) {
+    foreach (values %{$self->animated_sprites}) {
         $_->update_index($new_time);
     }
 
