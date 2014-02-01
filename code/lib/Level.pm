@@ -158,10 +158,8 @@ sub draw {
     $self->ch->draw($self->display_surface, int($map_x), int($map_y));
 
     #draw particles
-    if (@{$self->particles_chunks_list}) {
-        foreach (@{$self->particles_chunks_list}) {
-            $_->draw($self->display_surface, $map_offset_x, $map_offset_y);
-        }
+    foreach (@{$self->particles_chunks_list}) {
+        $_->draw($self->display_surface, $map_offset_x, $map_offset_y, $self->screen_w, $self->screen_h);
     }
 }
 
@@ -185,16 +183,14 @@ sub update {
 
     $self->collision_detector->resolve;
 
-    if (@{$self->particles_chunks_list}) {
-        my $i = 0;
-        while ($i <= $#{$self->particles_chunks_list}) {
-            my $particles_chunk = $self->particles_chunks_list->[$i];
-            $particles_chunk->update($new_time);
-            if ($particles_chunk->is_dead) {
-                splice @{$self->particles_chunks_list}, $i, 1;
-            } else {
-                ++$i;
-            }
+    my $i = 0;
+    while ($i <= $#{$self->particles_chunks_list}) {
+        my $particles_chunk = $self->particles_chunks_list->[$i];
+        $particles_chunk->update($new_time);
+        if ($particles_chunk->is_dead) {
+            splice @{$self->particles_chunks_list}, $i, 1;
+        } else {
+            ++$i;
         }
     }
 }
@@ -224,11 +220,11 @@ sub make_boom {
     }
 
     my $particles_chunk = ParticlesChunkBoom->new(
-        'x' => $self->ch->x, 
-        'y' => $self->ch->y, 
+        'x' => $self->ch->x,
+        'y' => $self->ch->y,
         'img' => $self->ch->img,
         'size' => $size);
-    $particles_chunk->init($self->ch->x, $self->ch->y, \@pos, $self->ch->img, $size);
+    $particles_chunk->init(\@pos);
     push @{$self->particles_chunks_list}, $particles_chunk;
 }
 
