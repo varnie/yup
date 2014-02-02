@@ -8,6 +8,7 @@ use Mouse;
 use SDL::Image;
 use SDL::Video;
 use TextureManager;
+use Loop::Constants;
 use ParticleBase;
 extends 'ParticleBase';
 
@@ -78,10 +79,10 @@ around BUILDARGS => sub {
         $args{initial_pos} = [$args{x}, $args{y}];
     }
     if (!exists($args{cos_val})) {
-        $args{cos_val} = cos($args{degrees});
+        $args{cos_val} = cos($args{degrees}*$RADIAN);
     }
     if (!exists($args{sin_val})) {
-        $args{sin_val} = sin($args{degrees});
+        $args{sin_val} = sin($args{degrees}*$RADIAN);
     }
 
     return $class->$orig(%args);

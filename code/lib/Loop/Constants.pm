@@ -16,6 +16,8 @@ our @EXPORT = qw/
     $LOOK_AT_RIGHT
     $LOOK_AT_LEFT
     $LOOK_AT_ME
+    $PI
+    $RADIAN
 /;
 
 our $SPRITE_W = 32;
@@ -36,5 +38,8 @@ our $MOVEMENT = {
 our $LOOK_AT_RIGHT = 0;
 our $LOOK_AT_LEFT = 1;
 our $LOOK_AT_ME = 2;
+
+our $PI = 3.14159265359;
+our $RADIAN = $PI/180;
 
 1;

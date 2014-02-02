@@ -29,20 +29,29 @@ has ['x', 'y'] => (
     default => 0
 );
 
-#TODO:
 sub init {
     my ($self, $pos) = @_;
 
+    my $peaks_count = 0;
     foreach my $pos (@{$pos}) {
-        my $is_fast = int(rand(2));
+
+        my $is_peak = 0;
+        if ($peaks_count < 10) {
+            ++$peaks_count;
+            $is_peak = 1;
+        }
+
+        my $is_fast = int(rand(10) > 7);
         push @{$self->items}, ParticleBoom->new(
             x => $self->x,
-            y => $self->y,
+            y => $self->y - 32,
             src_pos => $pos,
-            vx => rand(20) - 10 + ($is_fast ? rand(10) : 0),
-            vy => rand(20) - 10 + ($is_fast ? rand(10) : 0),
+            vy => rand(16) - 32,
+            acc_y => rand(20) + ($is_peak ? 20 : 10),
+            coeff  => rand(2),
+            degrees => int(rand(120)) + 30, # [30, 120]
             is_fast => $is_fast
-            );
+        );
     }
 }
 
