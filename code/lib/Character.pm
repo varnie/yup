@@ -309,43 +309,48 @@ void handle_collision_c(SDL_Surface *img, SV *sv_look_sprites) {
 
     AV *av_look_sprites = (AV *) SvRV(sv_look_sprites);
     const int look_sprites_count = av_top_index(av_look_sprites);
+    
+    if (look_sprites_count >= 0) {
 
-    if (SDL_MUSTLOCK(img)) {
-        SDL_LockSurface(img);
-    }
+        if (SDL_MUSTLOCK(img)) {
+            SDL_LockSurface(img);
+        }
 
-    int i;
-    for (i = 0; i <= look_sprites_count; ++i) {
-        SV **sv_look_sprite = av_fetch(av_look_sprites, i, 0);
-        AV *av_sprites = (AV *) SvRV(*sv_look_sprite);
+        unsigned int *pixels = img->pixels;
 
-        SV **value = av_fetch(av_sprites, 1, 0);
-        const int base = SvIV(*value)*width;
+        int i;
+        for (i = 0; i <= look_sprites_count; ++i) {
+            SV **sv_look_sprite = av_fetch(av_look_sprites, i, 0);
+            AV *av_sprites = (AV *) SvRV(*sv_look_sprite);
 
-        //show must go on!
-        int cur = base;
-        int val;
-        int index = cur;
+            SV **value = av_fetch(av_sprites, 1, 0);
+            const int base = SvIV(*value)*width;
 
-        int y, x;
-        for (y = 0; y <= 32; ++y) {
-            for (x = 0; x <= 32*3; ++x) {
-                ++index;
-                val = *((unsigned int*)img->pixels + index);
-                if (val != 0xFFFFFF) {
-                    const int r = val & R_mask;
-                    if (r < R_mask) {
-                        ((unsigned int*) img->pixels)[index] = (r+0x10000)+(val-r);
+            //show must go on!
+            int cur = base;
+            int val;
+            int index = cur;
+
+            int y, x;
+            for (y = 0; y <= 32; ++y) {
+                for (x = 0; x <= 32*3; ++x) {
+                    ++index;
+                    val = *(pixels + index);
+                    if (val != 0xFFFFFF) {
+                        const int r = val & R_mask;
+                        if (r < R_mask) {
+                            pixels[index] = (r+0x10000)+(val-r);
+                        }
                     }
                 }
+
+                index = (cur += width);
             }
-
-            index = (cur += width);
         }
-    }
 
-    if (SDL_MUSTLOCK(img)) {
-        SDL_UnlockSurface(img);
+        if (SDL_MUSTLOCK(img)) {
+            SDL_UnlockSurface(img);
+        }
     }
 }
 END

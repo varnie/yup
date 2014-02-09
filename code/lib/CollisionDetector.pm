@@ -8,6 +8,7 @@ use Mouse;
 use POSIX qw/ceil/;
 use List::Util qw/max min/;
 use Loop::Constants;
+use Inline with => 'SDL';
 
 has level_data => (
     is => 'ro',
@@ -21,6 +22,291 @@ has 'candidates' => (
     lazy => 1,
     builder => '_build_candidates'
 );
+
+has 'particles_chunk_candidates' => (
+    is => 'ro',
+    isa => 'ArrayRef[ParticlesChunkBase]',
+    lazy => 1,
+    default => sub { [] }
+);
+
+use Inline C => <<'END';
+void particles_resolve(SV *self) {
+
+    const HV *obj_hash = SvRV(self);
+    const AV *av_particles_chunk_candidates = (AV *) SvRV(*hv_fetch(obj_hash, "particles_chunk_candidates", 26, 0)); //26 is strlen("particles_chunk_candidates")
+    const int particles_chunk_count = av_top_index(av_particles_chunk_candidates);
+
+    if (particles_chunk_count >= 0) {
+
+        const int points[8][2] = {
+            {0, 0}, {2, 0}, //top
+            {0, 1}, {2, 1}, //bottom
+            {-1, 0}, {-1, 2}, //left
+            {3, 0}, {3, 2}  //right
+        };
+
+        int i;
+        for (i = 0; i <= particles_chunk_count; ++i) {
+            SV *sv_particles_chunk = *av_fetch(av_particles_chunk_candidates, i, 0);
+            const HV *particles_obj_hash = SvRV(sv_particles_chunk);
+
+            const AV *av_particles = (AV *) SvRV(*hv_fetch(particles_obj_hash, "items", 5, 0)); //5 is strlen("items")
+            const int particles_count = av_top_index(av_particles);
+
+            if (particles_count >= 0) {
+                                //printf("go\n");
+                int j;
+                for (j = 0; j <= particles_count; ++j) {
+
+                    const HV *particle_obj_hash = SvRV(*av_fetch(av_particles, j, 0));
+
+                    if (SvIV(*hv_fetch(particle_obj_hash, "ttl", 3, 0)) > 0) { //3 is strlen("ttl")
+                        //alive
+
+                        int x = SvIV(*hv_fetch(particle_obj_hash, "x", 1, 0)); //1 is strlen("x")
+                        int y = SvIV(*hv_fetch(particle_obj_hash, "y", 1, 0)); //1 is strlen("y")
+
+                        int default_updx = SvIV(*hv_fetch(particle_obj_hash, "newx", 4, 0)); //4 is strlen("newx")
+                        int default_updy = SvIV(*hv_fetch(particle_obj_hash, "newy", 4, 0)); //4 is strlen("newy")
+
+                        int upd_newx = default_updx;
+                        int upd_newy = default_updy;
+
+                        int left_x = x < upd_newx ? x : upd_newx;
+                        int right_x = x+2 > upd_newx+2 ? x+2 : upd_newx+2;
+                        int top_y = y < upd_newy ? y : upd_newy;
+                        int bottom_y = y+2 > upd_newy+2 ? y+2 : upd_newy+2;
+
+                        left_x = 32*((int)(left_x/32));
+                        right_x = 32*ceil((int)right_x/32);
+                        top_y = 32*(ceil((int)top_y/32))-32;
+                        bottom_y = 32*ceil(bottom_y/32);
+
+                        int move_right = x < upd_newx;
+                        int move_left = x > upd_newx;
+                        int move_up = upd_newy < y;
+                        int move_down = upd_newy > y;
+
+                        int xx, yy;
+                        for (xx = left_x; xx <= right_x; xx += 32) {
+                            for (yy = top_y; yy <= bottom_y; yy += 32) {
+                                if (is_map_val_c(self, xx, yy)) {
+                                    //printf("in check begin");
+
+                                    int iter = 0;
+                                    int hit_top = 1;
+                                    int hit_bottom = 1;
+                                    int hit_x = 1;
+
+                                    while (iter < 3 && (hit_top || hit_bottom || hit_x)) {
+                                        int dir;
+                                        for (dir = 0; dir <= 3; ++dir) {
+
+                                            if (dir == 0 && move_down ||
+                                                dir == 1 && move_up ||
+                                                dir == 2 && move_right ||
+                                                dir == 3 && move_left)
+                                            {
+                                                continue;
+                                            }
+
+                                            int projected_y = dir <= 1 ? upd_newy - y : 0;
+                                            int projected_x = dir >= 2 ? upd_newx - x : 0;
+
+                                            int index = 2 * dir;
+
+                                            while (is_point_within_c(x + projected_x + points[index][0], y + projected_y + points[index][1], xx, yy) &&
+                                                   is_point_within_c(x + projected_x + points[index+1][0], y + projected_y + points[index+1][1], xx, yy))
+                                            {
+                                                //printf("l begin\n");
+                                                if (dir == 0) {
+                                                    ++projected_y;
+                                                    ++upd_newy;
+                                                } else if (dir == 1) {
+                                                    --projected_y;
+                                                    --upd_newy;
+                                                } else if (dir == 2) {
+                                                    ++projected_x;
+                                                    ++upd_newx;
+                                                } else if (dir == 3) {
+                                                    --projected_x;
+                                                    --upd_newx;
+                                                }
+                                                //printf("l end\n");
+                                            }
+                                        }
+
+                                        ++iter;
+                                    }
+
+                                    if (upd_newy > default_updy) {
+                                        hit_top = 1;
+
+                                        SV *foo = *hv_fetch(particle_obj_hash, "vel_y", 5, 0);
+                                        SvIV_set(foo, (IV) abs(SvIV(foo)));
+                                    } else if (upd_newy < default_updy) {
+                                        hit_bottom = 1;
+
+                                        SV *foo = *hv_fetch(particle_obj_hash, "vel_y", 5, 0);
+                                        SvIV_set(foo, (IV)-abs(SvIV(foo)));
+                                    }
+
+                                    if (upd_newx != default_updx) {
+                                    //    hit_x = 1;
+                                    //    //TODO: fixme
+
+                                    //    int vel_x = SvIV(*hv_fetch(particle_obj_hash, "vel_x", 5, 0));
+                                    //    SV *val = newSViv(-vel_x);
+                                    //    hv_store(particle_obj_hash, "vel_x", 5, val, 0);
+
+                                        hv_store(particle_obj_hash, "ttl", 3, newSViv(-1), 0); //3 is strlen("ttl") //just a hack  to kill the particle
+                                    }
+
+                                    //printf("in check end");
+                                }
+                            }
+                        }
+
+                        hv_store(particle_obj_hash, "x", 1, newSViv(upd_newx), 0); //1 is strlen("x")
+                        hv_store(particle_obj_hash, "y", 1, newSViv(upd_newy), 0); //1 is strlen("y")
+                    }
+                }
+                //printf("go end\n");
+            }
+        }
+    }
+}
+
+int is_map_val_c(SV *self, int x, int y) {
+
+    const HV *obj_hash = SvRV(self);
+    const HV *level_data_hash = SvRV(*hv_fetch(obj_hash, "level_data", 10, 0)); //10 is strlen("level_data")
+
+    const int blocks_per_vrow = (int) (SvIV(*hv_fetch(level_data_hash, "h", 1, 0)) / 32); //1 is strlen("h")
+    const int blocks_per_hrow = SvIV(*hv_fetch(level_data_hash, "w", 1, 0)) / 32; //1 is strlen("w")
+
+    const HV *level_data_blocks = SvRV(*hv_fetch(level_data_hash, "blocks", 6, 0)); //6 is strlen("blocks")
+
+    SV *key_sv = newSViv((int)(x/32) + (blocks_per_vrow - (int)(y/32) - 1) * blocks_per_hrow);
+    return hv_exists_ent(level_data_blocks, key_sv, 0);
+}
+
+int is_point_within_c(int x, int y, int obj_x, int obj_y) {
+    return x >= obj_x && x <= obj_x+32 &&
+           y >= obj_y && y <= obj_y+32;
+}
+END
+
+#sub particles_resolve {
+#    my ($self) = @_;
+#
+#    &particles_resolve_c($self);
+#    return;
+#    my @points = (
+#        [0, 0], [8, 0], #top
+#        [0, 8], [8, 8], #bottom
+#        [0, 0], [0, 8], #left
+#        [8,  0], [8, 8] #right
+#    );
+#
+#    foreach my $particles_chunk (@{$self->particles_chunk_candidates}) {
+#
+#        foreach my $p (@{$particles_chunk->items}) {
+#
+#            if ($p->ttl <= 0) {
+#                next;
+#            }
+#
+#            my ($default_updx, $default_updy) = ($p->newx, $p->newy);
+#            my ($upd_newx, $upd_newy) = ($default_updx, $default_updy);
+#
+#            my $left_x = min($p->x, $upd_newx);
+#            my $right_x  = max($p->x+8, $upd_newx+8);
+#            my $top_y =  min($p->y, $upd_newy);
+#            my $bottom_y = max($p->y+8, $upd_newy+8);
+#
+#            $left_x = $SPRITE_W*int($left_x/$SPRITE_W);
+#            $right_x = $SPRITE_W*ceil(int($right_x)/$SPRITE_W);
+#            $top_y = $SPRITE_H*(ceil(int($top_y)/$SPRITE_H))-$SPRITE_H;
+#            $bottom_y = $SPRITE_H*ceil($bottom_y/$SPRITE_H);
+#
+#            my @objs;
+#            for (my $x = $left_x; $x <= $right_x; $x += $SPRITE_W) {
+#                for (my $y = $top_y; $y <= $bottom_y; $y += $SPRITE_H) {
+#                    if ($self->is_map_val($x, $y)) {
+#                        push @objs, [$x+$SPRITE_HALF_W, $y+$SPRITE_HALF_H]; #center of the object
+#                    }
+#                }
+#            }
+#
+#            if (@objs) {
+#                my $move_right = $p->x < $upd_newx;
+#                my $move_left = $p->x > $upd_newx;
+#                my $move_up = $upd_newy < $p->y;
+#                my $move_down = $upd_newy > $p->y;
+#
+#                foreach my $obj (@objs) {
+#                    my $iter = 0;
+#
+#                    my ($hit_top, $hit_bottom, $hit_x) = (1, 1, 1);
+#                    while ($iter < 1 && ($hit_top || $hit_bottom || $hit_x)) {
+#
+#                        $hit_top = $hit_bottom = $hit_x = 0;
+#
+#                        #dir: 0=top, 1=bottom, 2=left, 3=right;
+#                        foreach my $dir (0..3) {
+#                            next if ($dir == 0 && $move_down) ||
+#                                ($dir == 1 && $move_up) ||
+#                                ($dir == 2 && $move_right) ||
+#                                ($dir == 3 && $move_left);
+#
+#                            my $projected_y = $dir <= 1 ? $upd_newy-$p->y : 0;
+#                            my $projected_x = $dir >= 2 ? $upd_newx-$p->x : 0;
+#
+#                            my $index = 2*$dir;
+#
+#                            while ($self->is_point_within($p->x + $projected_x + ${$points[$index]}[0], $p->y + $projected_y + ${$points[$index]}[1], $obj)
+#                                || $self->is_point_within($p->x + $projected_x + ${$points[$index+1]}[0], $p->y + $projected_y + ${$points[$index+1]}[1], $obj)) {
+#                                if ($dir == 0) {
+#                                    ++$projected_y;
+#                                    ++$upd_newy;
+#                                } elsif ($dir == 1) {
+#                                    --$projected_y;
+#                                    --$upd_newy;
+#                                } elsif ($dir == 2) {
+#                                    ++$projected_x;
+#                                    ++$upd_newx;
+#                                } elsif ($dir == 3) {
+#                                    --$projected_x;
+#                                    --$upd_newx;
+#                                }
+#                            }
+#
+#                            if ($upd_newy > $default_updy) {
+#                                $hit_top = 1;
+#                                $p->vy(0);
+#                            } elsif ($upd_newy < $default_updy) {
+#                                $hit_bottom = 1;
+#                                $p->vy(0);
+#                            }
+#
+#                            if ($upd_newx != $default_updx) {
+#                                $hit_x = 1;
+#                                #$p->vx(0);
+#                            }
+#                        }
+#
+#                        ++$iter;
+#                    }
+#                }
+#            }
+#
+#            $p->x($upd_newx);
+#            $p->y($upd_newy);
+#        }
+#    }
+#};
 
 sub resolve {
     my ($self) = @_;
@@ -170,12 +456,12 @@ sub is_point_within_block {
 }
 
 sub is_map_val {
-    my ($self, $x, $y) = @_;
+    my ($self) = shift;
     state $blocks_per_vrow = int($self->level_data->h/$SPRITE_H);
     state $blocks_per_hrow = $self->level_data->w/$SPRITE_W;
 
-    return exists $self->level_data->blocks->{int($x/$SPRITE_W) +
-                                              ($blocks_per_vrow-int($y/$SPRITE_H)-1)*$blocks_per_hrow};
+    return exists $self->level_data->blocks->{int($_[0]/$SPRITE_W) +
+                                              ($blocks_per_vrow-int($_[1]/$SPRITE_H)-1)*$blocks_per_hrow};
 }
 
 sub is_riding_block_val {

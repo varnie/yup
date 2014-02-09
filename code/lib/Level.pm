@@ -19,6 +19,7 @@ use ParticleBase;
 use ParticlesChunkBloodSplatters;
 use ParticlesChunkCircles;
 use ParticlesChunkBoom;
+use Parallel::ForkManager;
 
 has filepath => (
     is => 'ro',
@@ -183,6 +184,7 @@ sub update {
 
     $self->collision_detector->resolve;
 
+    $self->collision_detector->{particles_chunk_candidates} = [];
     my $i = 0;
     while ($i <= $#{$self->particles_chunks_list}) {
         my $particles_chunk = $self->particles_chunks_list->[$i];
@@ -190,9 +192,14 @@ sub update {
         if ($particles_chunk->is_dead) {
             splice @{$self->particles_chunks_list}, $i, 1;
         } else {
+            if ($particles_chunk->isa('ParticlesChunkBoom')) {
+                push @{$self->collision_detector->particles_chunk_candidates}, $particles_chunk;
+            }
             ++$i;
         }
     }
+
+    $self->collision_detector->particles_resolve;
 }
 
 sub handle_collision {
@@ -212,11 +219,12 @@ sub make_boom {
 
     my $cur_render_rect = $self->ch->cur_render_rect;
     my $size = 2;
+    my $particles_count = 80;
     my @pos;
-    for (my $x = 0; $x < $SPRITE_W; $x += $size) {
-        for (my $y = 0; $y < $SPRITE_H; $y += $size) {
-            push @pos, [$cur_render_rect->[0] + $x, $cur_render_rect->[1] + $y];
-        }
+
+    my ($ratio_x, $ratio_y) = ($SPRITE_W/$size, $SPRITE_H/$size);
+    foreach (1..$particles_count) {
+        push @pos, [$cur_render_rect->[0] + $size*int(rand($ratio_x)), $cur_render_rect->[1] + $size*int(rand($ratio_y))];
     }
 
     my $particles_chunk = ParticlesChunkBoom->new(
@@ -226,6 +234,8 @@ sub make_boom {
         'size' => $size);
     $particles_chunk->init(\@pos);
     push @{$self->particles_chunks_list}, $particles_chunk;
+
+    push @{$self->collision_detector->particles_chunk_candidates}, $particles_chunk;
 }
 
 

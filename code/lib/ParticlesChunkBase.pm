@@ -29,7 +29,7 @@ has is_dead => (
     default => 0
 );
 
-has sprite_dt => (
+has move_dt => (
     is => 'rw',
     isa => 'Num',
     default => Time::HiRes::time,
@@ -58,8 +58,8 @@ sub draw {
 sub update {
     my ($self, $new_dt) = @_;
 
-    if ($new_dt - $self->sprite_dt >= $self->speed_change_dt) {
-        $self->sprite_dt($new_dt);
+    if ($new_dt - $self->move_dt >= $self->speed_change_dt) {
+        $self->move_dt($new_dt);
 
         my $alive_cnt = 0;
         foreach (@{$self->items}) {
