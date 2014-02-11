@@ -32,14 +32,14 @@ has is_dead => (
 has move_dt => (
     is => 'rw',
     isa => 'Num',
-    default => Time::HiRes::time,
-    lazy => 1
+    default => Time::HiRes::time#,
+#    lazy => 1
 );
 
 has speed_change_dt => (
     is => 'rw',
     isa => 'Num',
-    default => 0.05
+    default => 0.02
 );
 
 sub init {
@@ -58,13 +58,14 @@ sub draw {
 sub update {
     my ($self, $new_dt) = @_;
 
-    if ($new_dt - $self->move_dt >= $self->speed_change_dt) {
+    my $dt_diff = $new_dt - $self->move_dt;
+    if ($dt_diff >= $self->speed_change_dt) {
         $self->move_dt($new_dt);
 
         my $alive_cnt = 0;
         foreach (@{$self->items}) {
             if ($_->ttl > 0) {
-                $_->update;
+                $_->update($dt_diff);
                 ++$alive_cnt;
             }
         }

@@ -40,32 +40,37 @@ void particles_resolve(SV *self) {
     if (particles_chunk_count >= 0) {
 
         const int points[8][2] = {
-            {0, 0}, {2, 0}, //top
-            {0, 1}, {2, 1}, //bottom
-            {-1, 0}, {-1, 2}, //left
-            {3, 0}, {3, 2}  //right
+            {0, 0}, {4, 0}, //top
+            {0, 4}, {4, 4}, //bottom
+            {0, 0}, {0, 4}, //left
+            {4, 0}, {4, 4}  //right
         };
 
         int i;
         for (i = 0; i <= particles_chunk_count; ++i) {
             SV *sv_particles_chunk = *av_fetch(av_particles_chunk_candidates, i, 0);
-            const HV *particles_obj_hash = SvRV(sv_particles_chunk);
+            HV *particles_obj_hash = SvRV(sv_particles_chunk);
 
-            const AV *av_particles = (AV *) SvRV(*hv_fetch(particles_obj_hash, "items", 5, 0)); //5 is strlen("items")
+            AV *av_particles = (AV *) SvRV(*hv_fetch(particles_obj_hash, "items", 5, 0)); //5 is strlen("items")
             const int particles_count = av_top_index(av_particles);
 
             if (particles_count >= 0) {
-                                //printf("go\n");
+
                 int j;
                 for (j = 0; j <= particles_count; ++j) {
 
-                    const HV *particle_obj_hash = SvRV(*av_fetch(av_particles, j, 0));
+                    HV *particle_obj_hash = SvRV(*av_fetch(av_particles, j, 0));
 
                     if (SvIV(*hv_fetch(particle_obj_hash, "ttl", 3, 0)) > 0) { //3 is strlen("ttl")
                         //alive
 
-                        int x = SvIV(*hv_fetch(particle_obj_hash, "x", 1, 0)); //1 is strlen("x")
-                        int y = SvIV(*hv_fetch(particle_obj_hash, "y", 1, 0)); //1 is strlen("y")
+                        SV *sv_x = *hv_fetch(particle_obj_hash, "x", 1, 0);
+                        SV *sv_y = *hv_fetch(particle_obj_hash, "y", 1, 0);
+                        int x = SvIV(sv_x);
+                        int y = SvIV(sv_y);
+
+                        //int x = SvIV(*hv_fetch(particle_obj_hash, "x", 1, 0)); //1 is strlen("x")
+                        //int y = SvIV(*hv_fetch(particle_obj_hash, "y", 1, 0)); //1 is strlen("y")
 
                         int default_updx = SvIV(*hv_fetch(particle_obj_hash, "newx", 4, 0)); //4 is strlen("newx")
                         int default_updy = SvIV(*hv_fetch(particle_obj_hash, "newy", 4, 0)); //4 is strlen("newy")
@@ -74,12 +79,14 @@ void particles_resolve(SV *self) {
                         int upd_newy = default_updy;
 
                         int left_x = x < upd_newx ? x : upd_newx;
-                        int right_x = x+2 > upd_newx+2 ? x+2 : upd_newx+2;
+                        int right_x = x+4 > upd_newx+4 ? x+4 : upd_newx+4;
                         int top_y = y < upd_newy ? y : upd_newy;
-                        int bottom_y = y+2 > upd_newy+2 ? y+2 : upd_newy+2;
+                        int bottom_y = y+4 > upd_newy+4 ? y+4 : upd_newy+4;
+
+                        //printf("left_x was: %d right_x was: %d\n", left_x, right_x);
 
                         left_x = 32*((int)(left_x/32));
-                        right_x = 32*ceil((int)right_x/32);
+                        right_x = 32*((int)(right_x/32)) + (right_x%32 > 0 ? 32 : 0);
                         top_y = 32*(ceil((int)top_y/32))-32;
                         bottom_y = 32*ceil(bottom_y/32);
 
@@ -88,11 +95,12 @@ void particles_resolve(SV *self) {
                         int move_up = upd_newy < y;
                         int move_down = upd_newy > y;
 
+                        //printf("top:%d bottom:%d left:%d right:%d\n", top_y, bottom_y, left_x, right_x);
+
                         int xx, yy;
                         for (xx = left_x; xx <= right_x; xx += 32) {
                             for (yy = top_y; yy <= bottom_y; yy += 32) {
                                 if (is_map_val_c(self, xx, yy)) {
-                                    //printf("in check begin");
 
                                     int iter = 0;
                                     int hit_top = 1;
@@ -100,6 +108,10 @@ void particles_resolve(SV *self) {
                                     int hit_x = 1;
 
                                     while (iter < 3 && (hit_top || hit_bottom || hit_x)) {
+
+                                        hit_top = hit_bottom = hit_x = 0;
+
+                                        //dir: 0=top, 1=bottom, 2=left, 3=right
                                         int dir;
                                         for (dir = 0; dir <= 3; ++dir) {
 
@@ -116,10 +128,9 @@ void particles_resolve(SV *self) {
 
                                             int index = 2 * dir;
 
-                                            while (is_point_within_c(x + projected_x + points[index][0], y + projected_y + points[index][1], xx, yy) &&
+                                            while (is_point_within_c(x + projected_x + points[index][0],   y + projected_y + points[index][1], xx, yy) &&
                                                    is_point_within_c(x + projected_x + points[index+1][0], y + projected_y + points[index+1][1], xx, yy))
                                             {
-                                                //printf("l begin\n");
                                                 if (dir == 0) {
                                                     ++projected_y;
                                                     ++upd_newy;
@@ -133,46 +144,53 @@ void particles_resolve(SV *self) {
                                                     --projected_x;
                                                     --upd_newx;
                                                 }
-                                                //printf("l end\n");
+                                            }
+
+                                            if (upd_newy > default_updy) {
+                                                hit_top = 1;
+                                            } else if (upd_newy < default_updy) {
+                                                hit_bottom = 1;
+                                            }
+
+                                            if (upd_newx != default_updx) {
+                                                hit_x = 1;
                                             }
                                         }
 
                                         ++iter;
                                     }
-
-                                    if (upd_newy > default_updy) {
-                                        hit_top = 1;
-
-                                        SV *foo = *hv_fetch(particle_obj_hash, "vel_y", 5, 0);
-                                        SvIV_set(foo, (IV) abs(SvIV(foo)));
-                                    } else if (upd_newy < default_updy) {
-                                        hit_bottom = 1;
-
-                                        SV *foo = *hv_fetch(particle_obj_hash, "vel_y", 5, 0);
-                                        SvIV_set(foo, (IV)-abs(SvIV(foo)));
-                                    }
-
-                                    if (upd_newx != default_updx) {
-                                    //    hit_x = 1;
-                                    //    //TODO: fixme
-
-                                    //    int vel_x = SvIV(*hv_fetch(particle_obj_hash, "vel_x", 5, 0));
-                                    //    SV *val = newSViv(-vel_x);
-                                    //    hv_store(particle_obj_hash, "vel_x", 5, val, 0);
-
-                                        hv_store(particle_obj_hash, "ttl", 3, newSViv(-1), 0); //3 is strlen("ttl") //just a hack  to kill the particle
-                                    }
-
-                                    //printf("in check end");
                                 }
                             }
                         }
 
-                        hv_store(particle_obj_hash, "x", 1, newSViv(upd_newx), 0); //1 is strlen("x")
-                        hv_store(particle_obj_hash, "y", 1, newSViv(upd_newy), 0); //1 is strlen("y")
+
+                        if (upd_newy > default_updy) {
+                            //first possible way
+                            //hv_store(particle_obj_hash, "vel_y", 5, newSViv(abs( SvIV(*hv_fetch(particle_obj_hash, "vel_y", 5, 0)))), 0);
+
+                            //second possible way
+                            SV *foo = *hv_fetch(particle_obj_hash, "vel_y", 5, 0);
+                            double val = SvNV(foo);
+                            val = abs(val);
+                            SvNV_set(foo, val);
+                        } else if (upd_newy < default_updy) {
+                            //hv_store(particle_obj_hash, "vel_y", 5, newSViv(- abs( SvIV(*hv_fetch(particle_obj_hash, "vel_y", 5, 0)))), 0);
+
+                            SV *foo = *hv_fetch(particle_obj_hash, "vel_y", 5, 0);
+                            double val = SvNV(foo);
+                            val = - abs(val);
+                            SvNV_set(foo, val);
+                        }
+
+                        if (upd_newx != default_updx) {
+                            //hv_store(particle_obj_hash, "vel_x", 5, newSViv(-1 * SvIV(*hv_fetch(particle_obj_hash, "vel_x", 5, 0))), 0);
+                            hv_store(particle_obj_hash, "ttl", 3, newSViv(-1), 0); //3 is strlen("ttl") //just a hack  to kill the particle
+                        }
+
+                        SvIV_set(sv_x, upd_newx);
+                        SvIV_set(sv_y, upd_newy);
                     }
                 }
-                //printf("go end\n");
             }
         }
     }

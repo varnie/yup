@@ -43,14 +43,14 @@ sub init {
         #}
 
         my $is_fast = int(rand(10) > 3);
-        my $vel_x = int(rand(8));
+        my $vel_x = int(rand(8))*30;
+        $vel_x -= 5 if $vel_x == 0;
         $vel_x *= -1 if rand(2) > 1;
 
         my $acc_x = 0;
 
-        my $vel_y = ($is_fast ? - int(rand(12)) - 10: - int(rand(6)) - 2);
-        #$vel_y -= 10 if $is_peak;
-        my $acc_y = 1;
+        my $vel_y = ($is_fast ? - int(rand(40))*10 - 100: - int(rand(20))*10);
+        my $acc_y = 350;
 
         push @{$self->items}, ParticleBoom->new(
             x => $self->x,
