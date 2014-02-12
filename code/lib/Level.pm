@@ -19,7 +19,6 @@ use ParticleBase;
 use ParticlesChunkBloodSplatters;
 use ParticlesChunkCircles;
 use ParticlesChunkBoom;
-use Parallel::ForkManager;
 
 has filepath => (
     is => 'ro',
