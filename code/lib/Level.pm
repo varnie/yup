@@ -207,7 +207,7 @@ sub handle_collision {
     if ($self->collision_detector->is_bad_guy_val($self->ch->x-12, $self->ch->y-$SPRITE_HALF_H-1)) {
         $self->ch->handle_collision;
 
-        my $particles_chunk = (rand(2) > 1 ? ParticlesChunkBloodSplatters->new : ParticlesChunkCircles->new);
+        my $particles_chunk = (rand(2) > 1 ? ParticlesChunkBloodSplatters->new(speed_change_dt => 0.03) : ParticlesChunkCircles->new(speed_change_dt => 0.03));
         $particles_chunk->init($self->ch->x, $self->ch->y, 2);
         push @{$self->particles_chunks_list}, $particles_chunk;
     }
