@@ -46,6 +46,7 @@ sub init {
         my $vel_x = int(rand(8))*30;
         $vel_x -= 5 if $vel_x == 0;
         $vel_x *= -1 if rand(2) > 1;
+        #$vel_x = 0;
 
         my $acc_x = 0;
 

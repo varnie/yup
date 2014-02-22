@@ -38,6 +38,12 @@ has ['vel_x', 'vel_y', 'acc_x', 'acc_y'] => (
     isa => 'Num'
 );
 
+has bounces_count => (
+    is => 'rw',
+    isa => 'Int',
+    default => 0
+);
+
 sub draw {
 
 }
@@ -47,6 +53,7 @@ sub update {
 
     $self->{vel_x} += $self->acc_x*$dt_diff;
     $self->{vel_y} += $self->acc_y*$dt_diff;
+
     $self->{newx} += $self->vel_x*$dt_diff;
     $self->{newy} += $self->vel_y*$dt_diff;
 

@@ -30,191 +30,106 @@ has 'particles_chunk_candidates' => (
     default => sub { [] }
 );
 
-use Inline C => <<'END';
-void particles_resolve(SV *self) {
+sub particles_resolve {
+    my ($self) = @_;
 
-    const HV *obj_hash = SvRV(self);
-    const AV *av_particles_chunk_candidates = (AV *) SvRV(*hv_fetch(obj_hash, "particles_chunk_candidates", 26, 0)); //26 is strlen("particles_chunk_candidates")
-    const int particles_chunk_count = av_top_index(av_particles_chunk_candidates);
+    foreach my $particles_chunk (@{$self->particles_chunk_candidates}) {
+        foreach my $p (@{$particles_chunk->items}) {
+            if ($p->ttl > 0) {
 
-    if (particles_chunk_count >= 0) {
+                my ($x, $y) = ($p->x, $p->y);
+                my ($newx, $newy) = ($p->newx, $p->newy);
+                my ($vel_x, $vel_y) = ($p->vel_x, $p->vel_y);
 
-        const int points[8][2] = {
-            {0, 0}, {4, 0}, //top
-            {0, 4}, {4, 4}, //bottom
-            {0, 0}, {0, 4}, //left
-            {4, 0}, {4, 4}  //right
-        };
+                my ($size, $half_size) = ($p->size, $p->size/2);
 
-        int i;
-        for (i = 0; i <= particles_chunk_count; ++i) {
-            SV *sv_particles_chunk = *av_fetch(av_particles_chunk_candidates, i, 0);
-            HV *particles_obj_hash = SvRV(sv_particles_chunk);
+                my $left_x = min($x, $newx);
+                my $right_x = max($x+$size, $newx+$size);
+                my $top_y = min($y, $newy);
+                my $bottom_y = max($y+$size, $newy+$size);
 
-            AV *av_particles = (AV *) SvRV(*hv_fetch(particles_obj_hash, "items", 5, 0)); //5 is strlen("items")
-            const int particles_count = av_top_index(av_particles);
+                $left_x = $SPRITE_W*(int($left_x/$SPRITE_W));
+                $right_x = $SPRITE_W*(int($right_x/$SPRITE_W) + ($right_x % $SPRITE_W > 0 ? 1 : 0));
+                $top_y = $SPRITE_H*(int($top_y/$SPRITE_H));
+                $bottom_y = $SPRITE_H*(int($bottom_y/$SPRITE_H) + ($bottom_y % $SPRITE_H > 0 ? 1 : 0));
 
-            if (particles_count >= 0) {
+                my ($vx, $vy, $res, $intersects) = ($newx-$x, $newy-$y, [], 0);
+                my ($left, $right, $top, $bottom);
 
-                int j;
-                for (j = 0; j <= particles_count; ++j) {
+                for (my $yy = $top_y; $yy <= $bottom_y; $yy += $SPRITE_H) {
+                    for (my $xx = $left_x; $xx <= $right_x; $xx += $SPRITE_W) {
+                        if ($self->is_map_val($xx, $yy) &&
+                            $self->line_rectangle_intersects($x+$half_size, $y+$half_size, $vx, $vy, $xx-$half_size, $xx+$SPRITE_W+$half_size, $yy-$half_size, $yy+$SPRITE_H+$half_size, $res)) {
+                            $intersects = 1;
 
-                    HV *particle_obj_hash = SvRV(*av_fetch(av_particles, j, 0));
+                            my ($res_x, $res_y) = @{$res};
+                            if ($res_x == $xx-$half_size && $res_y >= $yy-$half_size && $res_y <= $yy+$SPRITE_H+$half_size) {
+                                #say "left";
+                                $left = 1;
+                            } elsif ($res_x == $xx+$SPRITE_W+$half_size && $res_y >= $yy-$half_size && $res_y <= $yy+$SPRITE_H+$half_size) {
+                                #say "right";
+                                $right = 1;
+                            } elsif ($res_y == $yy-$half_size && $res_x >= $xx-$half_size && $res_x <= $xx+$SPRITE_W+$half_size) {
+                                #say "top";
+                                $top = 1;
 
-                    if (SvIV(*hv_fetch(particle_obj_hash, "ttl", 3, 0)) > 0) { //3 is strlen("ttl")
-                        //alive
+                                if (++$p->{bounces_count} >= 100) {
+                                    $p->{ttl} = 0;
+                                }
+                            } else {
+                                #say "bottom";
+                                $bottom = 1;
 
-                        SV *sv_x = *hv_fetch(particle_obj_hash, "x", 1, 0);
-                        SV *sv_y = *hv_fetch(particle_obj_hash, "y", 1, 0);
-                        int x = SvIV(sv_x);
-                        int y = SvIV(sv_y);
-
-                        //int x = SvIV(*hv_fetch(particle_obj_hash, "x", 1, 0)); //1 is strlen("x")
-                        //int y = SvIV(*hv_fetch(particle_obj_hash, "y", 1, 0)); //1 is strlen("y")
-
-                        int default_updx = SvIV(*hv_fetch(particle_obj_hash, "newx", 4, 0)); //4 is strlen("newx")
-                        int default_updy = SvIV(*hv_fetch(particle_obj_hash, "newy", 4, 0)); //4 is strlen("newy")
-
-                        int upd_newx = default_updx;
-                        int upd_newy = default_updy;
-
-                        int left_x = x < upd_newx ? x : upd_newx;
-                        int right_x = x+4 > upd_newx+4 ? x+4 : upd_newx+4;
-                        int top_y = y < upd_newy ? y : upd_newy;
-                        int bottom_y = y+4 > upd_newy+4 ? y+4 : upd_newy+4;
-
-                        //printf("left_x was: %d right_x was: %d\n", left_x, right_x);
-
-                        left_x = 32*((int)(left_x/32));
-                        right_x = 32*((int)(right_x/32)) + (right_x%32 > 0 ? 32 : 0);
-                        top_y = 32*(ceil((int)top_y/32))-32;
-                        bottom_y = 32*ceil(bottom_y/32);
-
-                        int move_right = x < upd_newx;
-                        int move_left = x > upd_newx;
-                        int move_up = upd_newy < y;
-                        int move_down = upd_newy > y;
-
-                        //printf("top:%d bottom:%d left:%d right:%d\n", top_y, bottom_y, left_x, right_x);
-
-                        int xx, yy;
-                        for (xx = left_x; xx <= right_x; xx += 32) {
-                            for (yy = top_y; yy <= bottom_y; yy += 32) {
-                                if (is_map_val_c(self, xx, yy)) {
-
-                                    int iter = 0;
-                                    int hit_top = 1;
-                                    int hit_bottom = 1;
-                                    int hit_x = 1;
-
-                                    while (iter < 3 && (hit_top || hit_bottom || hit_x)) {
-
-                                        hit_top = hit_bottom = hit_x = 0;
-
-                                        //dir: 0=top, 1=bottom, 2=left, 3=right
-                                        int dir;
-                                        for (dir = 0; dir <= 3; ++dir) {
-
-                                            if (dir == 0 && move_down ||
-                                                dir == 1 && move_up ||
-                                                dir == 2 && move_right ||
-                                                dir == 3 && move_left)
-                                            {
-                                                continue;
-                                            }
-
-                                            int projected_y = dir <= 1 ? upd_newy - y : 0;
-                                            int projected_x = dir >= 2 ? upd_newx - x : 0;
-
-                                            int index = 2 * dir;
-
-                                            while (is_point_within_c(x + projected_x + points[index][0],   y + projected_y + points[index][1], xx, yy) &&
-                                                   is_point_within_c(x + projected_x + points[index+1][0], y + projected_y + points[index+1][1], xx, yy))
-                                            {
-                                                if (dir == 0) {
-                                                    ++projected_y;
-                                                    ++upd_newy;
-                                                } else if (dir == 1) {
-                                                    --projected_y;
-                                                    --upd_newy;
-                                                } else if (dir == 2) {
-                                                    ++projected_x;
-                                                    ++upd_newx;
-                                                } else if (dir == 3) {
-                                                    --projected_x;
-                                                    --upd_newx;
-                                                }
-                                            }
-
-                                            if (upd_newy > default_updy) {
-                                                hit_top = 1;
-                                            } else if (upd_newy < default_updy) {
-                                                hit_bottom = 1;
-                                            }
-
-                                            if (upd_newx != default_updx) {
-                                                hit_x = 1;
-                                            }
-                                        }
-
-                                        ++iter;
-                                    }
+                                if (++$p->{bounces_count} >= 100) {
+                                    $p->{ttl} = 0;
                                 }
                             }
+
+                            ($vx, $vy) = ($res_x-$half_size-$x, $res_y-$half_size-$y);
                         }
-
-
-                        if (upd_newy > default_updy) {
-                            //first possible way
-                            //hv_store(particle_obj_hash, "vel_y", 5, newSViv(abs( SvIV(*hv_fetch(particle_obj_hash, "vel_y", 5, 0)))), 0);
-
-                            //second possible way
-                            SV *foo = *hv_fetch(particle_obj_hash, "vel_y", 5, 0);
-                            double val = SvNV(foo);
-                            val = abs(val);
-                            SvNV_set(foo, val);
-                        } else if (upd_newy < default_updy) {
-                            //hv_store(particle_obj_hash, "vel_y", 5, newSViv(- abs( SvIV(*hv_fetch(particle_obj_hash, "vel_y", 5, 0)))), 0);
-
-                            SV *foo = *hv_fetch(particle_obj_hash, "vel_y", 5, 0);
-                            double val = SvNV(foo);
-                            val = - abs(val);
-                            SvNV_set(foo, val);
-                        }
-
-                        if (upd_newx != default_updx) {
-                            //hv_store(particle_obj_hash, "vel_x", 5, newSViv(-1 * SvIV(*hv_fetch(particle_obj_hash, "vel_x", 5, 0))), 0);
-                            hv_store(particle_obj_hash, "ttl", 3, newSViv(-1), 0); //3 is strlen("ttl") //just a hack  to kill the particle
-                        }
-
-                        SvIV_set(sv_x, upd_newx);
-                        SvIV_set(sv_y, upd_newy);
                     }
+                }
+
+                if ($intersects) {
+                    ($p->{x}, $p->{y}) = ($res->[0]-$half_size, $res->[1]-$half_size);
+                    if ($left) {
+                        $p->{vel_x} = -abs($vel_x);
+                    } elsif ($right) {
+                        $p->{vel_x} = abs($vel_x);
+                    } elsif ($top) {
+                        $p->{vel_y} = -abs($vel_y);
+                    } else {
+                        $p->{vel_y} = abs($vel_y);
+                    }
+
+                } else {
+                    ($p->{x}, $p->{y}) = ($newx, $newy);
                 }
             }
         }
     }
 }
 
-int is_map_val_c(SV *self, int x, int y) {
-
-    const HV *obj_hash = SvRV(self);
-    const HV *level_data_hash = SvRV(*hv_fetch(obj_hash, "level_data", 10, 0)); //10 is strlen("level_data")
-
-    const int blocks_per_vrow = (int) (SvIV(*hv_fetch(level_data_hash, "h", 1, 0)) / 32); //1 is strlen("h")
-    const int blocks_per_hrow = SvIV(*hv_fetch(level_data_hash, "w", 1, 0)) / 32; //1 is strlen("w")
-
-    const HV *level_data_blocks = SvRV(*hv_fetch(level_data_hash, "blocks", 6, 0)); //6 is strlen("blocks")
-
-    SV *key_sv = newSViv((int)(x/32) + (blocks_per_vrow - (int)(y/32) - 1) * blocks_per_hrow);
-    return hv_exists_ent(level_data_blocks, key_sv, 0);
-}
-
-int is_point_within_c(int x, int y, int obj_x, int obj_y) {
-    return x >= obj_x && x <= obj_x+32 &&
-           y >= obj_y && y <= obj_y+32;
-}
-END
+#use Inline C => <<'END';
+#int is_map_val_c(SV *self, int x, int y) {
+#
+#    HV *obj_hash = SvRV(self);
+#    const HV *level_data_hash = SvRV(*hv_fetch(obj_hash, "level_data", 10, 0)); //10 is strlen("level_data")
+#
+#    const int blocks_per_vrow = (int) (SvIV(*hv_fetch(level_data_hash, "h", 1, 0)) / 32); //1 is strlen("h")
+#    const int blocks_per_hrow = SvIV(*hv_fetch(level_data_hash, "w", 1, 0)) / 32; //1 is strlen("w")
+#
+#    HV *level_data_blocks = SvRV(*hv_fetch(level_data_hash, "blocks", 6, 0)); //6 is strlen("blocks")
+#
+#    SV *key_sv = newSViv((int)(x/32) + (blocks_per_vrow - (int)(y/32) - 1) * blocks_per_hrow);
+#    return hv_exists_ent(level_data_blocks, key_sv, 0);
+#}
+#
+#int is_point_within_c(int x, int y, int obj_x, int obj_y) {
+#    return x >= obj_x && x <= obj_x+32 &&
+#           y >= obj_y && y <= obj_y+32;
+#}
+#END
 
 #sub particles_resolve {
 #    my ($self) = @_;
@@ -474,13 +389,15 @@ sub is_point_within_block {
 }
 
 sub is_map_val {
-    my ($self) = shift;
+
+    my ($self, $x, $y) = @_;
     state $blocks_per_vrow = int($self->level_data->h/$SPRITE_H);
     state $blocks_per_hrow = $self->level_data->w/$SPRITE_W;
 
-    return exists $self->level_data->blocks->{int($_[0]/$SPRITE_W) +
-                                              ($blocks_per_vrow-int($_[1]/$SPRITE_H)-1)*$blocks_per_hrow};
+    return exists $self->level_data->blocks->{int($x/$SPRITE_W) +
+                                              ($blocks_per_vrow-int($y/$SPRITE_H)-1)*$blocks_per_hrow};
 }
+
 
 sub is_riding_block_val {
     my ($self, $x, $y) = @_;
@@ -525,6 +442,35 @@ sub _build_candidates {
     push @result, $self->level_data->ch;
 
     return \@result;
+}
+
+sub line_rectangle_intersects {
+    my ($self, $x, $y, $vx, $vy, $left, $right, $top, $bottom, $res) = @_;
+
+    my @p = (-$vx, $vx, -$vy, $vy);
+    my @q = ($x-$left, $right-$x, $y-$top, $bottom-$y);
+
+    my $u1 = -10000000; #TODO:
+    my $u2 =  10000000;  #TODO:
+
+    foreach my $i (0..3) {
+        if ($p[$i] == 0) {
+            return 0 if $q[$i] < 0;
+        } else {
+            if ($p[$i] < 0) {
+                my $t = $q[$i] / $p[$i];
+                $u1 = $t if $u1 < $t;
+            } elsif ($p[$i] > 0) {
+                my $t = $q[$i] / $p[$i];
+                $u2 = $t if $u2 > $t;
+            }
+        }
+    }
+
+    return 0 if ($u1 > $u2 || $u1 > 1 || $u1 < 0);
+
+    @{$res} = ($x + $u1*$vx, $y + $u1*$vy);
+    return 1;
 }
 
 no Mouse;

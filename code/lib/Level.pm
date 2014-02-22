@@ -207,7 +207,7 @@ sub handle_collision {
     if ($self->collision_detector->is_bad_guy_val($self->ch->x-12, $self->ch->y-$SPRITE_HALF_H-1)) {
         $self->ch->handle_collision;
 
-        my $particles_chunk = (rand(2) > 1 ? ParticlesChunkBloodSplatters->new(speed_change_dt => 0.03) : ParticlesChunkCircles->new(speed_change_dt => 0.03));
+        my $particles_chunk = (rand(2) > 1 ? ParticlesChunkBloodSplatters->new(speed_change_dt => 0.05) : ParticlesChunkCircles->new(speed_change_dt => 0.05));
         $particles_chunk->init($self->ch->x, $self->ch->y, 2);
         push @{$self->particles_chunks_list}, $particles_chunk;
     }
@@ -218,7 +218,7 @@ sub make_boom {
 
     my $cur_render_rect = $self->ch->cur_render_rect;
     my $size = 4;
-    my $particles_count = 10;
+    my $particles_count = 20;
     my @pos;
 
     my ($ratio_x, $ratio_y) = ($SPRITE_W/$size, $SPRITE_H/$size);
@@ -305,6 +305,9 @@ sub _build_level_data {
             }
         }
     }
+
+    $blocks{96*20+5} = 1;
+    $blocks{96*21+5} = 1;
 
     $blocks{96+1} = 1;
     $blocks{96*3+3} = 1;
