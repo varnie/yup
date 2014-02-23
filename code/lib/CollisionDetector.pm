@@ -59,7 +59,8 @@ sub particles_resolve {
                 for (my $yy = $top_y; $yy <= $bottom_y; $yy += $SPRITE_H) {
                     for (my $xx = $left_x; $xx <= $right_x; $xx += $SPRITE_W) {
                         if ($self->is_map_val($xx, $yy) &&
-                            $self->line_rectangle_intersects($x+$half_size, $y+$half_size, $vx, $vy, $xx-$half_size, $xx+$SPRITE_W+$half_size, $yy-$half_size, $yy+$SPRITE_H+$half_size, $res)) {
+                            #$self->line_rectangle_intersects($x+$half_size, $y+$half_size, $vx, $vy, $xx-$half_size, $xx+$SPRITE_W+$half_size, $yy-$half_size, $yy+$SPRITE_H+$half_size, $res)) {
+                           line_rectangle_intersects_c($x+$half_size, $y+$half_size, $vx, $vy, $xx-$half_size, $xx+$SPRITE_W+$half_size, $yy-$half_size, $yy+$SPRITE_H+$half_size, $res)) {
                             $intersects = 1;
 
                             my ($res_x, $res_y) = @{$res};
@@ -72,18 +73,12 @@ sub particles_resolve {
                             } elsif ($res_y == $yy-$half_size && $res_x >= $xx-$half_size && $res_x <= $xx+$SPRITE_W+$half_size) {
                                 #say "top";
                                 $top = 1;
-
-                                if (++$p->{bounces_count} >= 100) {
-                                    $p->{ttl} = 0;
-                                }
                             } else {
                                 #say "bottom";
                                 $bottom = 1;
-
-                                if (++$p->{bounces_count} >= 100) {
-                                    $p->{ttl} = 0;
-                                }
                             }
+
+                            $p->{ttl} = 0 if ++$p->{bounces_count} >= 100;
 
                             ($vx, $vy) = ($res_x-$half_size-$x, $res_y-$half_size-$y);
                         }
@@ -91,7 +86,6 @@ sub particles_resolve {
                 }
 
                 if ($intersects) {
-                    ($p->{x}, $p->{y}) = ($res->[0]-$half_size, $res->[1]-$half_size);
                     if ($left) {
                         $p->{vel_x} = -abs($vel_x);
                     } elsif ($right) {
@@ -102,6 +96,7 @@ sub particles_resolve {
                         $p->{vel_y} = abs($vel_y);
                     }
 
+                    ($p->{x}, $p->{y}) = ($res->[0]-$half_size, $res->[1]-$half_size);
                 } else {
                     ($p->{x}, $p->{y}) = ($newx, $newy);
                 }
@@ -110,136 +105,67 @@ sub particles_resolve {
     }
 }
 
-#use Inline C => <<'END';
-#int is_map_val_c(SV *self, int x, int y) {
-#
-#    HV *obj_hash = SvRV(self);
-#    const HV *level_data_hash = SvRV(*hv_fetch(obj_hash, "level_data", 10, 0)); //10 is strlen("level_data")
-#
-#    const int blocks_per_vrow = (int) (SvIV(*hv_fetch(level_data_hash, "h", 1, 0)) / 32); //1 is strlen("h")
-#    const int blocks_per_hrow = SvIV(*hv_fetch(level_data_hash, "w", 1, 0)) / 32; //1 is strlen("w")
-#
-#    HV *level_data_blocks = SvRV(*hv_fetch(level_data_hash, "blocks", 6, 0)); //6 is strlen("blocks")
-#
-#    SV *key_sv = newSViv((int)(x/32) + (blocks_per_vrow - (int)(y/32) - 1) * blocks_per_hrow);
-#    return hv_exists_ent(level_data_blocks, key_sv, 0);
-#}
-#
-#int is_point_within_c(int x, int y, int obj_x, int obj_y) {
-#    return x >= obj_x && x <= obj_x+32 &&
-#           y >= obj_y && y <= obj_y+32;
-#}
-#END
+use Inline C => <<'END';
+int line_rectangle_intersects_c(double x, double y, double vx, double vy, int left, int right, int top, int bottom, SV *res) {
 
-#sub particles_resolve {
-#    my ($self) = @_;
-#
-#    &particles_resolve_c($self);
-#    return;
-#    my @points = (
-#        [0, 0], [8, 0], #top
-#        [0, 8], [8, 8], #bottom
-#        [0, 0], [0, 8], #left
-#        [8,  0], [8, 8] #right
-#    );
-#
-#    foreach my $particles_chunk (@{$self->particles_chunk_candidates}) {
-#
-#        foreach my $p (@{$particles_chunk->items}) {
-#
-#            if ($p->ttl <= 0) {
-#                next;
-#            }
-#
-#            my ($default_updx, $default_updy) = ($p->newx, $p->newy);
-#            my ($upd_newx, $upd_newy) = ($default_updx, $default_updy);
-#
-#            my $left_x = min($p->x, $upd_newx);
-#            my $right_x  = max($p->x+8, $upd_newx+8);
-#            my $top_y =  min($p->y, $upd_newy);
-#            my $bottom_y = max($p->y+8, $upd_newy+8);
-#
-#            $left_x = $SPRITE_W*int($left_x/$SPRITE_W);
-#            $right_x = $SPRITE_W*ceil(int($right_x)/$SPRITE_W);
-#            $top_y = $SPRITE_H*(ceil(int($top_y)/$SPRITE_H))-$SPRITE_H;
-#            $bottom_y = $SPRITE_H*ceil($bottom_y/$SPRITE_H);
-#
-#            my @objs;
-#            for (my $x = $left_x; $x <= $right_x; $x += $SPRITE_W) {
-#                for (my $y = $top_y; $y <= $bottom_y; $y += $SPRITE_H) {
-#                    if ($self->is_map_val($x, $y)) {
-#                        push @objs, [$x+$SPRITE_HALF_W, $y+$SPRITE_HALF_H]; #center of the object
-#                    }
-#                }
-#            }
-#
-#            if (@objs) {
-#                my $move_right = $p->x < $upd_newx;
-#                my $move_left = $p->x > $upd_newx;
-#                my $move_up = $upd_newy < $p->y;
-#                my $move_down = $upd_newy > $p->y;
-#
-#                foreach my $obj (@objs) {
-#                    my $iter = 0;
-#
-#                    my ($hit_top, $hit_bottom, $hit_x) = (1, 1, 1);
-#                    while ($iter < 1 && ($hit_top || $hit_bottom || $hit_x)) {
-#
-#                        $hit_top = $hit_bottom = $hit_x = 0;
-#
-#                        #dir: 0=top, 1=bottom, 2=left, 3=right;
-#                        foreach my $dir (0..3) {
-#                            next if ($dir == 0 && $move_down) ||
-#                                ($dir == 1 && $move_up) ||
-#                                ($dir == 2 && $move_right) ||
-#                                ($dir == 3 && $move_left);
-#
-#                            my $projected_y = $dir <= 1 ? $upd_newy-$p->y : 0;
-#                            my $projected_x = $dir >= 2 ? $upd_newx-$p->x : 0;
-#
-#                            my $index = 2*$dir;
-#
-#                            while ($self->is_point_within($p->x + $projected_x + ${$points[$index]}[0], $p->y + $projected_y + ${$points[$index]}[1], $obj)
-#                                || $self->is_point_within($p->x + $projected_x + ${$points[$index+1]}[0], $p->y + $projected_y + ${$points[$index+1]}[1], $obj)) {
-#                                if ($dir == 0) {
-#                                    ++$projected_y;
-#                                    ++$upd_newy;
-#                                } elsif ($dir == 1) {
-#                                    --$projected_y;
-#                                    --$upd_newy;
-#                                } elsif ($dir == 2) {
-#                                    ++$projected_x;
-#                                    ++$upd_newx;
-#                                } elsif ($dir == 3) {
-#                                    --$projected_x;
-#                                    --$upd_newx;
-#                                }
-#                            }
-#
-#                            if ($upd_newy > $default_updy) {
-#                                $hit_top = 1;
-#                                $p->vy(0);
-#                            } elsif ($upd_newy < $default_updy) {
-#                                $hit_bottom = 1;
-#                                $p->vy(0);
-#                            }
-#
-#                            if ($upd_newx != $default_updx) {
-#                                $hit_x = 1;
-#                                #$p->vx(0);
-#                            }
-#                        }
-#
-#                        ++$iter;
-#                    }
-#                }
-#            }
-#
-#            $p->x($upd_newx);
-#            $p->y($upd_newy);
-#        }
-#    }
-#};
+    const double p[4] = {-vx, vx, -vy, vy};
+    const double q[4] = {x-left, right-x, y-top, bottom-y};
+
+    double u1 = -INFINITY;
+    double u2 = INFINITY;
+
+    int i;
+    for (i = 0; i < 4; ++i) {
+        if (p[i] == 0) {
+            if (q[i] < 0) {
+                return 0;
+            }
+        } else {
+            if (p[i] < 0) {
+                const double t = q[i] / p[i];
+                if (u1 < t) {
+                    u1 = t;
+                }
+            } else if (p[i] > 0) {
+                const double t = q[i] / p[i];
+                if (u2 > t) {
+                    u2 = t;
+                }
+            }
+        }
+    }
+
+    if (u1 > u2 || u1 > 1 || u1 < 0) {
+        return 0;
+    }
+
+    AV *av_res = (AV *) SvRV(res);
+    av_store(av_res, 0, newSVnv(x + u1*vx));
+    av_store(av_res, 1, newSVnv(y + u1*vy));
+
+    return 1;
+}
+/*
+int is_map_val_c(SV *self, int x, int y) {
+
+    HV *obj_hash = SvRV(self);
+    const HV *level_data_hash = SvRV(*hv_fetch(obj_hash, "level_data", 10, 0)); //10 is strlen("level_data")
+
+    const int blocks_per_vrow = (int) (SvIV(*hv_fetch(level_data_hash, "h", 1, 0)) / 32); //1 is strlen("h")
+    const int blocks_per_hrow = SvIV(*hv_fetch(level_data_hash, "w", 1, 0)) / 32; //1 is strlen("w")
+
+    HV *level_data_blocks = SvRV(*hv_fetch(level_data_hash, "blocks", 6, 0)); //6 is strlen("blocks")
+
+    SV *key_sv = newSViv((int)(x/32) + (blocks_per_vrow - (int)(y/32) - 1) * blocks_per_hrow);
+    return hv_exists_ent(level_data_blocks, key_sv, 0);
+}
+
+int is_point_within_c(int x, int y, int obj_x, int obj_y) {
+    return x >= obj_x && x <= obj_x+32 &&
+           y >= obj_y && y <= obj_y+32;
+}
+*/
+END
 
 sub resolve {
     my ($self) = @_;
