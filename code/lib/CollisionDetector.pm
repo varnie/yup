@@ -5,7 +5,6 @@ use warnings;
 use 5.010;
 
 use Mouse;
-use POSIX qw/ceil/;
 use List::Util qw/max min/;
 use Loop::Constants;
 use Inline with => 'SDL';
@@ -43,18 +42,15 @@ sub particles_resolve {
 
                 my ($size, $half_size) = ($p->size, $p->size/2);
 
-                my $left_x = min($x, $newx);
+                my $left_x = $SPRITE_W*(int(min($x, $newx)/$SPRITE_W));
                 my $right_x = max($x+$size, $newx+$size);
-                my $top_y = min($y, $newy);
+                my $top_y = $SPRITE_H*(int(min($y, $newy)/$SPRITE_H));
                 my $bottom_y = max($y+$size, $newy+$size);
 
-                $left_x = $SPRITE_W*(int($left_x/$SPRITE_W));
                 $right_x = $SPRITE_W*(int($right_x/$SPRITE_W) + ($right_x % $SPRITE_W > 0 ? 1 : 0));
-                $top_y = $SPRITE_H*(int($top_y/$SPRITE_H));
                 $bottom_y = $SPRITE_H*(int($bottom_y/$SPRITE_H) + ($bottom_y % $SPRITE_H > 0 ? 1 : 0));
 
-                my ($vx, $vy, $res, $intersects) = ($newx-$x, $newy-$y, [], 0);
-                my ($left, $right, $top, $bottom);
+                my ($vx, $vy, $res, $intersects, $edge) = ($newx-$x, $newy-$y, [], 0);
 
                 for (my $yy = $top_y; $yy <= $bottom_y; $yy += $SPRITE_H) {
                     for (my $xx = $left_x; $xx <= $right_x; $xx += $SPRITE_W) {
@@ -65,17 +61,17 @@ sub particles_resolve {
 
                             my ($res_x, $res_y) = @{$res};
                             if ($res_x == $xx-$half_size && $res_y >= $yy-$half_size && $res_y <= $yy+$SPRITE_H+$half_size) {
-                                #say "left";
-                                $left = 1;
+                                #"left";
+                                $edge = 1;
                             } elsif ($res_x == $xx+$SPRITE_W+$half_size && $res_y >= $yy-$half_size && $res_y <= $yy+$SPRITE_H+$half_size) {
-                                #say "right";
-                                $right = 1;
+                                #"right";
+                                $edge = 2;
                             } elsif ($res_y == $yy-$half_size && $res_x >= $xx-$half_size && $res_x <= $xx+$SPRITE_W+$half_size) {
-                                #say "top";
-                                $top = 1;
+                                #"top";
+                                $edge = 3;
                             } else {
-                                #say "bottom";
-                                $bottom = 1;
+                                #"bottom";
+                                $edge = 4;
                             }
 
                             $p->{ttl} = 0 if ++$p->{bounces_count} >= 100;
@@ -86,11 +82,11 @@ sub particles_resolve {
                 }
 
                 if ($intersects) {
-                    if ($left) {
+                    if ($edge == 1) {
                         $p->{vel_x} = -abs($vel_x);
-                    } elsif ($right) {
+                    } elsif ($edge == 2) {
                         $p->{vel_x} = abs($vel_x);
-                    } elsif ($top) {
+                    } elsif ($edge == 3) {
                         $p->{vel_y} = -abs($vel_y);
                     } else {
                         $p->{vel_y} = abs($vel_y);
@@ -106,13 +102,13 @@ sub particles_resolve {
 }
 
 use Inline C => <<'END';
-int line_rectangle_intersects_c(double x, double y, double vx, double vy, int left, int right, int top, int bottom, SV *res) {
+int line_rectangle_intersects_c(float x, float y, float vx, float vy, int left, int right, int top, int bottom, SV *res) {
 
-    const double p[4] = {-vx, vx, -vy, vy};
-    const double q[4] = {x-left, right-x, y-top, bottom-y};
+    const float p[4] = {-vx, vx, -vy, vy};
+    const float q[4] = {x-left, right-x, y-top, bottom-y};
 
-    double u1 = -INFINITY;
-    double u2 = INFINITY;
+    float u1 = -INFINITY;
+    float u2 = INFINITY;
 
     int i;
     for (i = 0; i < 4; ++i) {
@@ -122,12 +118,12 @@ int line_rectangle_intersects_c(double x, double y, double vx, double vy, int le
             }
         } else {
             if (p[i] < 0) {
-                const double t = q[i] / p[i];
+                const float t = q[i] / p[i];
                 if (u1 < t) {
                     u1 = t;
                 }
             } else if (p[i] > 0) {
-                const double t = q[i] / p[i];
+                const float t = q[i] / p[i];
                 if (u2 > t) {
                     u2 = t;
                 }
@@ -180,10 +176,10 @@ sub resolve {
         my $top_y =  min($c->y-$c->half_h, $upd_newy-$c->half_h);
         my $bottom_y = max($c->y+$c->half_h, $upd_newy+$c->half_h);
 
-        $left_x = $SPRITE_W*int($left_x/$SPRITE_W);
-        $right_x = $SPRITE_W*ceil(int($right_x)/$SPRITE_W);
-        $top_y = $SPRITE_H*(ceil(int($top_y)/$SPRITE_H))-$SPRITE_H;
-        $bottom_y = $SPRITE_H*ceil($bottom_y/$SPRITE_H);
+        $left_x = $SPRITE_W*(int($left_x/$SPRITE_W));
+        $right_x = $SPRITE_W*(int($right_x/$SPRITE_W) + ($right_x % $SPRITE_W > 0 ? 1 : 0));
+        $top_y = $SPRITE_H*(int($top_y/$SPRITE_H));
+        $bottom_y = $SPRITE_H*(int($bottom_y/$SPRITE_H) + ($bottom_y % $SPRITE_H > 0 ? 1 : 0));
 
         my @objs;
         for (my $x = $left_x; $x <= $right_x; $x += $SPRITE_W) {
