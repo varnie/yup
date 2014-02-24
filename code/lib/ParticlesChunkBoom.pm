@@ -23,49 +23,22 @@ has size => (
     default => 6
 );
 
-has ['x', 'y'] => (
-    is => 'rw',
-    isa => 'Num',
-    default => 0
-);
+sub add {
+    my ($self, $pos, $x, $y) = @_;
+    my ($acc_x, $acc_y) = (0, 350);
 
-sub init {
-    my ($self, $pos) = @_;
-
-    #my $peaks_count = int(rand(4));
-    #my $cur_peaks_count = 0;
     foreach my $pos (@{$pos}) {
-
-        #my $is_peak = 0;
-        #if ($cur_peaks_count < $peaks_count) {
-        #    ++$cur_peaks_count;
-        #    $is_peak = 1;
-        #}
-
-        my $is_fast = int(rand(10) > 3);
-        my $vel_x = int(rand(8))*30;
-        $vel_x -= 5 if $vel_x == 0;
-        $vel_x *= -1 if rand(2) > 1;
-        #$vel_x = 0;
-
-        my $acc_x = 0;
-
+        my $is_fast = rand(10) > 6;
+        my $vel_x = (int(rand(8))*30) * (rand(2) > 1 ? -1 : 1);
         my $vel_y = ($is_fast ? - int(rand(40))*10 - 100: - int(rand(20))*10);
-        my $acc_y = 350;
 
         push @{$self->items}, ParticleBoom->new(
-            x => $self->x,
-            y => $self->y - 16,
+            x => $x,
+            y => $y - 16,
             src_pos => $pos,
-            #vy => rand(16) - 32,
-            #acc_y => rand(10) + ($is_peak ? 5 : 2),
-            #coeff  => rand(2),
-            #degrees => int(rand(120)) + 30, # [30, 120]
-            is_fast => $is_fast,
-
-            #
-            newx => $self->x,
-            newy => $self->y - 16,
+            is_fast => int($is_fast),
+            newx => $x,
+            newy => $y - 16,
             vel_x => $vel_x,
             vel_y => $vel_y,
             acc_x => $acc_x,

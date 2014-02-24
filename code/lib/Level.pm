@@ -85,6 +85,12 @@ has particles_chunks_list => (
     default => sub { [] }
 );
 
+has particles_chunks_boom_list => (
+    is => 'rw',
+    isa => 'ArrayRef[ParticlesChunkBoom]',
+    default => sub { [] }
+);
+
 sub draw {
     my ($self, $camera) = @_;
 
@@ -161,6 +167,9 @@ sub draw {
     foreach (@{$self->particles_chunks_list}) {
         $_->draw($self->display_surface, $map_offset_x, $map_offset_y, $self->screen_w, $self->screen_h);
     }
+    foreach (@{$self->particles_chunks_boom_list}) {
+        $_->draw($self->display_surface, $map_offset_x, $map_offset_y, $self->screen_w, $self->screen_h);
+    }
 }
 
 sub update {
@@ -183,7 +192,6 @@ sub update {
 
     $self->collision_detector->resolve;
 
-    $self->collision_detector->{particles_chunk_candidates} = [];
     my $i = 0;
     while ($i <= $#{$self->particles_chunks_list}) {
         my $particles_chunk = $self->particles_chunks_list->[$i];
@@ -191,11 +199,25 @@ sub update {
         if ($particles_chunk->is_dead) {
             splice @{$self->particles_chunks_list}, $i, 1;
         } else {
-            if ($particles_chunk->isa('ParticlesChunkBoom')) {
-                push @{$self->collision_detector->particles_chunk_candidates}, $particles_chunk;
-            }
             ++$i;
         }
+    }
+
+    my $changed = 0;
+    $i = 0;
+    while ($i <= $#{$self->particles_chunks_boom_list}) {
+        my $particles_chunk = $self->particles_chunks_boom_list->[$i];
+        $particles_chunk->update($new_time);
+        if ($particles_chunk->is_dead) {
+            splice @{$self->particles_chunks_boom_list}, $i, 1;
+            $changed = 1;
+        } else {
+            ++$i;
+        }
+    }
+
+    if ($changed) {
+        $self->collision_detector->{particles_chunks_list} = $self->particles_chunks_boom_list;
     }
 
     $self->collision_detector->particles_resolve;
@@ -216,26 +238,24 @@ sub handle_collision {
 sub make_boom {
     my ($self) = @_;
 
-    my $cur_render_rect = $self->ch->cur_render_rect;
-    my $size = 4;
-    my $particles_count = 20;
-    my @pos;
-
+    my ($cur_render_rect, $size, $particles_count, $pos) = ($self->ch->cur_render_rect, 3, int(rand(10))+5, []);
     my ($ratio_x, $ratio_y) = ($SPRITE_W/$size, $SPRITE_H/$size);
     foreach (1..$particles_count) {
-        push @pos, [$cur_render_rect->[0] + $size*int(rand($ratio_x)), $cur_render_rect->[1] + $size*int(rand($ratio_y))];
+        push @{$pos}, [$cur_render_rect->[0] + $size*int(rand($ratio_x)), $cur_render_rect->[1] + $size*int(rand($ratio_y))];
     }
 
-    my $particles_chunk = ParticlesChunkBoom->new(
-        x => $self->ch->x,
-        y => $self->ch->y,
-        img => $self->ch->img,
-        size => $size,
-        move_dt => Time::HiRes::time);
-    $particles_chunk->init(\@pos);
-    push @{$self->particles_chunks_list}, $particles_chunk;
+    if (@{$self->particles_chunks_boom_list} == 0) {
+        my $particles_chunk = ParticlesChunkBoom->new(
+            img => $self->ch->img,
+            size => $size,
+            move_dt => Time::HiRes::time);
+        $particles_chunk->add($pos, $self->ch->x, $self->ch->y);
 
-    push @{$self->collision_detector->particles_chunk_candidates}, $particles_chunk;
+        push @{$self->particles_chunks_boom_list}, $particles_chunk;
+        push @{$self->collision_detector->particles_chunk_candidates}, $particles_chunk;
+    } else {
+        $self->particles_chunks_boom_list->[0]->add($pos, $self->ch->x, $self->ch->y);
+    }
 }
 
 

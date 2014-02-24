@@ -74,7 +74,7 @@ sub particles_resolve {
                                 $edge = 4;
                             }
 
-                            $p->{ttl} = 0 if ++$p->{bounces_count} >= 100;
+                            $p->{ttl} = 0 if ++$p->{bounces_count} >= 30;
 
                             ($vx, $vy) = ($res_x-$half_size-$x, $res_y-$half_size-$y);
                         }
@@ -188,7 +188,7 @@ sub resolve {
                     push @objs, [$x+$SPRITE_HALF_W, $y+$SPRITE_HALF_H]; #center of the object
                 }
                 my $obj;
-                if (($obj = $self->is_riding_block_val($x, $y))) {
+                if ((my $obj = $self->is_riding_block_val($x, $y))) {
                     push @objs, $obj;
                 }
             }
