@@ -54,7 +54,7 @@ sub get {
                     , SDL::Video::map_RGB($texture_data->format, 0xFF, 0xFF, 0xFF));
 
                 if ($name eq 'MAIN_CHARACTER_OVERLAP') {
-                    SDL::Video::set_alpha($texture_data, SDL_SRCALPHA, 96);
+                    SDL::Video::set_alpha($texture_data, SDL_SRCALPHA, 128);
                 }
             } elsif ($name eq 'MAIN_CHARACTER_INVERTED') {
                 croak(SDL::get_error) if SDL::Video::set_color_key($texture_data, SDL_SRCCOLORKEY
@@ -71,27 +71,12 @@ sub get {
             $texture_data = SDL::Surface->new(SDL_ANYFORMAT, $SPRITE_W, $SPRITE_H, SDL::Video::get_video_info->vfmt->BitsPerPixel);
             $texture_data = SDL::Video::display_format($texture_data);
             croak(SDL::get_error) unless $texture_data;
+                    SDL::Video::set_alpha($texture_data, SDL_SRCALPHA, 128);
 
-            $self->{textures}->{AUX_SURFACE} = $texture_data;
+            return $self->{textures}->{AUX_SURFACE} = $texture_data;
         } else {
-            $texture_data = $self->{textures}->{AUX_SURFACE};
+            return $self->{textures}->{AUX_SURFACE};
         }
-
-        return $texture_data;
-    } elsif ($name eq 'AUX_SURFACE_FOR_BOOM') {
-        my $texture_data;
-
-        if (!exists $self->{textures}->{AUX_SURFACE_FOR_BOOM}) {
-            $texture_data = SDL::Surface->new(SDL_ANYFORMAT & ~(SDL_SRCALPHA), 2, 2, SDL::Video::get_video_info->vfmt->BitsPerPixel);
-            $texture_data = SDL::Video::display_format($texture_data);
-            croak(SDL::get_error) unless $texture_data;
-
-            $self->{textures}->{AUX_SURFACE_FOR_BOOM} = $texture_data;
-        } else {
-            $texture_data = $self->{textures}->{AUX_SURFACE_FOR_BOOM};
-        }
-
-        return $texture_data;
     } else {
         croak("Constant `$name` is not declared and could not be found into the synonyms.");
     }

@@ -30,10 +30,10 @@ sub draw {
     my $src_rect = SDL::Rect->new(0, 0, $self->size, $self->size);
     my $dst_rect = SDL::Rect->new($self->x - $map_offset_x, $self->y - $map_offset_y, $self->size, $self->size);
 
-    my $aux_surface = TextureManager->instance->get('AUX_SURFACE');
+    state $aux_surface = TextureManager->instance->get('AUX_SURFACE');
     state $aux_surface_format = $aux_surface->format;
 
-    SDL::Video::fill_rect($aux_surface, $src_rect, SDL::Video::map_RGBA($aux_surface_format, $self->red, $self->green, $self->blue, $self->red));
+    SDL::Video::fill_rect($aux_surface, $src_rect, SDL::Video::map_RGB($aux_surface_format, $self->red, $self->green, $self->blue));
     SDL::Video::blit_surface($aux_surface, $src_rect, $display_surface, $dst_rect);
 }
 
