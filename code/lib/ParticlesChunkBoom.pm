@@ -23,27 +23,54 @@ has size => (
     default => 6
 );
 
+has dead_items => (
+    is => 'rw',
+    isa => 'ArrayRef[ParticleBase]',
+    default => sub {[]}
+);
+
 sub add {
     my ($self, $pos, $x, $y) = @_;
     my ($acc_x, $acc_y) = (0, 350);
+
+    my $particle;
 
     foreach my $pos (@{$pos}) {
         my $is_fast = rand(10) > 6;
         my $vel_x = (int(rand(8))*30) * (rand(2) > 1 ? -1 : 1);
         my $vel_y = ($is_fast ? - int(rand(40))*10 - 100: - int(rand(20))*10);
 
-        push @{$self->items}, ParticleBoom->new(
-            x => $x,
-            y => $y - 16,
-            src_pos => $pos,
-            is_fast => int($is_fast),
-            newx => $x,
-            newy => $y - 16,
-            vel_x => $vel_x,
-            vel_y => $vel_y,
-            acc_x => $acc_x,
-            acc_y => $acc_y
-        );
+        if (@{$self->dead_items}) {
+            $particle = pop @{$self->dead_items};
+
+            $particle->reinit(
+                $x,
+                $y - 16,
+                $pos,
+                int($is_fast),
+                $x,
+                $y - 16,
+                $vel_x,
+                $vel_y,
+                $acc_x,
+                $acc_y,
+                100);
+        } else {
+            $particle = ParticleBoom->new(
+                x => $x,
+                y => $y - 16,
+                src_pos => $pos,
+                is_fast => int($is_fast),
+                newx => $x,
+                newy => $y - 16,
+                vel_x => $vel_x,
+                vel_y => $vel_y,
+                acc_x => $acc_x,
+                acc_y => $acc_y
+            );
+        }
+
+        push @{$self->items}, $particle;
     }
 }
 

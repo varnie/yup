@@ -44,6 +44,23 @@ has bounces_count => (
     default => 0
 );
 
+sub reinit {
+    my ($self, $x, $y, $src_pos, $is_fast, $newx, $newy, $vel_x, $vel_y, $acc_x, $acc_y, $ttl) = @_;
+
+    $self->{x} = $x;
+    $self->{y} = $y;
+    $self->{src_pos} = $src_pos;
+    $self->{is_fast} = $is_fast;
+    $self->{newx} = $newx;
+    $self->{newy} = $newy;
+    $self->{vel_x} = $vel_x;
+    $self->{vel_y} = $vel_y;
+    $self->{acc_x} = $acc_x;
+    $self->{acc_y} = $acc_y;
+    $self->{ttl} = $ttl;
+    $self->{bounces_count} = 0;
+}
+
 sub draw {
 
 }

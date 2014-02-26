@@ -85,10 +85,10 @@ has particles_chunks_list => (
     default => sub { [] }
 );
 
-has particles_chunks_boom_list => (
+has particles_chunks_boom => (
     is => 'rw',
-    isa => 'ArrayRef[ParticlesChunkBoom]',
-    default => sub { [] }
+    isa => 'Maybe[ParticlesChunkBoom]',
+    default => sub { undef }
 );
 
 sub draw {
@@ -167,8 +167,8 @@ sub draw {
     foreach (@{$self->particles_chunks_list}) {
         $_->draw($self->display_surface, $map_offset_x, $map_offset_y, $self->screen_w, $self->screen_h);
     }
-    foreach (@{$self->particles_chunks_boom_list}) {
-        $_->draw($self->display_surface, $map_offset_x, $map_offset_y, $self->screen_w, $self->screen_h);
+    if (defined $self->particles_chunks_boom) {
+        $self->particles_chunks_boom->draw($self->display_surface, $map_offset_x, $map_offset_y, $self->screen_w, $self->screen_h);
     }
 }
 
@@ -203,21 +203,20 @@ sub update {
         }
     }
 
-    my $changed = 0;
-    $i = 0;
-    while ($i <= $#{$self->particles_chunks_boom_list}) {
-        my $particles_chunk = $self->particles_chunks_boom_list->[$i];
-        $particles_chunk->update($new_time);
-        if ($particles_chunk->is_dead) {
-            splice @{$self->particles_chunks_boom_list}, $i, 1;
-            $changed = 1;
-        } else {
-            ++$i;
+    if (defined $self->particles_chunks_boom) {
+        $self->particles_chunks_boom->update($new_time);
+        $i = 0;
+        my $items = $self->particles_chunks_boom->items;
+        my $dead_items = $self->particles_chunks_boom->dead_items;
+        while ($i <= $#{$items}) {
+            my $particle = $items->[$i];
+            if ($particle->ttl <= 0) {
+                push @{$dead_items}, $particle;
+                splice @{$items}, $i, 1;
+            } else {
+                ++$i;
+            }
         }
-    }
-
-    if ($changed) {
-        $self->collision_detector->{particles_chunks_list} = $self->particles_chunks_boom_list;
     }
 
     $self->collision_detector->particles_resolve;
@@ -244,17 +243,17 @@ sub make_boom {
         push @{$pos}, [$cur_render_rect->[0] + $size*int(rand($ratio_x)), $cur_render_rect->[1] + $size*int(rand($ratio_y))];
     }
 
-    if (@{$self->particles_chunks_boom_list} == 0) {
+    if (!defined $self->particles_chunks_boom) {
         my $particles_chunk = ParticlesChunkBoom->new(
             img => $self->ch->img,
             size => $size,
             move_dt => Time::HiRes::time);
         $particles_chunk->add($pos, $self->ch->x, $self->ch->y);
 
-        push @{$self->particles_chunks_boom_list}, $particles_chunk;
+        $self->{particles_chunks_boom} = $particles_chunk;
         push @{$self->collision_detector->particles_chunk_candidates}, $particles_chunk;
     } else {
-        $self->particles_chunks_boom_list->[0]->add($pos, $self->ch->x, $self->ch->y);
+        $self->particles_chunks_boom->add($pos, $self->ch->x, $self->ch->y);
     }
 }
 
