@@ -251,7 +251,7 @@ sub make_boom {
         $particles_chunk->add($pos, $self->ch->x, $self->ch->y);
 
         $self->{particles_chunks_boom} = $particles_chunk;
-        push @{$self->collision_detector->particles_chunk_candidates}, $particles_chunk;
+        $self->collision_detector->{particles_chunk_candidate} = $particles_chunk;
     } else {
         $self->particles_chunks_boom->add($pos, $self->ch->x, $self->ch->y);
     }

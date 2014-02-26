@@ -22,80 +22,78 @@ has 'candidates' => (
     builder => '_build_candidates'
 );
 
-has 'particles_chunk_candidates' => (
+has 'particles_chunk_candidate' => (
     is => 'ro',
-    isa => 'ArrayRef[ParticlesChunkBase]',
+    isa => 'Maybe[ParticlesChunkBase]',
     lazy => 1,
-    default => sub { [] }
+    default => sub { undef }
 );
 
 sub particles_resolve {
     my ($self) = @_;
+    if (defined $self->particles_chunk_candidate) {
+        my $res = [];
 
-    foreach my $particles_chunk (@{$self->particles_chunk_candidates}) {
-        foreach my $p (@{$particles_chunk->items}) {
-            if ($p->ttl > 0) {
+        foreach my $p (@{$self->particles_chunk_candidate->items}) {
 
-                my ($x, $y) = ($p->x, $p->y);
-                my ($newx, $newy) = ($p->newx, $p->newy);
-                my ($vel_x, $vel_y) = ($p->vel_x, $p->vel_y);
+            my ($x, $y) = ($p->x, $p->y);
+            my ($newx, $newy) = ($p->newx, $p->newy);
+            my ($vel_x, $vel_y) = ($p->vel_x, $p->vel_y);
 
-                my ($size, $half_size) = ($p->size, $p->size/2);
+            my ($size, $half_size) = ($p->size, $p->size/2);
 
-                my $left_x = $SPRITE_W*(int(min($x, $newx)/$SPRITE_W));
-                my $right_x = max($x+$size, $newx+$size);
-                my $top_y = $SPRITE_H*(int(min($y, $newy)/$SPRITE_H));
-                my $bottom_y = max($y+$size, $newy+$size);
+            my $left_x = $SPRITE_W*(int(min($x, $newx)/$SPRITE_W));
+            my $right_x = max($x+$size, $newx+$size);
+            my $top_y = $SPRITE_H*(int(min($y, $newy)/$SPRITE_H));
+            my $bottom_y = max($y+$size, $newy+$size);
 
-                $right_x = $SPRITE_W*(int($right_x/$SPRITE_W) + ($right_x % $SPRITE_W > 0 ? 1 : 0));
-                $bottom_y = $SPRITE_H*(int($bottom_y/$SPRITE_H) + ($bottom_y % $SPRITE_H > 0 ? 1 : 0));
+            $right_x = $SPRITE_W*(int($right_x/$SPRITE_W) + ($right_x % $SPRITE_W > 0 ? 1 : 0));
+            $bottom_y = $SPRITE_H*(int($bottom_y/$SPRITE_H) + ($bottom_y % $SPRITE_H > 0 ? 1 : 0));
 
-                my ($vx, $vy, $res, $intersects, $edge) = ($newx-$x, $newy-$y, [], 0);
+            my ($vx, $vy, $intersects, $edge) = ($newx-$x, $newy-$y, 0);
 
-                for (my $yy = $top_y; $yy <= $bottom_y; $yy += $SPRITE_H) {
-                    for (my $xx = $left_x; $xx <= $right_x; $xx += $SPRITE_W) {
-                        if ($self->is_map_val($xx, $yy) &&
-                            #$self->line_rectangle_intersects($x+$half_size, $y+$half_size, $vx, $vy, $xx-$half_size, $xx+$SPRITE_W+$half_size, $yy-$half_size, $yy+$SPRITE_H+$half_size, $res)) {
-                           line_rectangle_intersects_c($x+$half_size, $y+$half_size, $vx, $vy, $xx-$half_size, $xx+$SPRITE_W+$half_size, $yy-$half_size, $yy+$SPRITE_H+$half_size, $res)) {
-                            $intersects = 1;
+            for (my $yy = $top_y; $yy <= $bottom_y; $yy += $SPRITE_H) {
+                for (my $xx = $left_x; $xx <= $right_x; $xx += $SPRITE_W) {
+                    if ($self->is_map_val($xx, $yy) &&
+                        line_rectangle_intersects_c($x+$half_size, $y+$half_size, $vx, $vy, $xx-$half_size, $xx+$SPRITE_W+$half_size, $yy-$half_size, $yy+$SPRITE_H+$half_size, $res)) {
+                        $intersects = 1;
 
-                            my ($res_x, $res_y) = @{$res};
-                            if ($res_x == $xx-$half_size && $res_y >= $yy-$half_size && $res_y <= $yy+$SPRITE_H+$half_size) {
-                                #"left";
-                                $edge = 1;
-                            } elsif ($res_x == $xx+$SPRITE_W+$half_size && $res_y >= $yy-$half_size && $res_y <= $yy+$SPRITE_H+$half_size) {
-                                #"right";
-                                $edge = 2;
-                            } elsif ($res_y == $yy-$half_size && $res_x >= $xx-$half_size && $res_x <= $xx+$SPRITE_W+$half_size) {
-                                #"top";
-                                $edge = 3;
-                            } else {
-                                #"bottom";
-                                $edge = 4;
-                            }
-
-                            $p->{ttl} = 0 if ++$p->{bounces_count} >= 30;
-
-                            ($vx, $vy) = ($res_x-$half_size-$x, $res_y-$half_size-$y);
+                        my ($res_x, $res_y) = @{$res};
+                        if ($res_x == $xx-$half_size && $res_y >= $yy-$half_size && $res_y <= $yy+$SPRITE_H+$half_size) {
+                            #"left";
+                            $edge = 1;
+                        } elsif ($res_x == $xx+$SPRITE_W+$half_size && $res_y >= $yy-$half_size && $res_y <= $yy+$SPRITE_H+$half_size) {
+                            #"right";
+                            $edge = 2;
+                        } elsif ($res_y == $yy-$half_size && $res_x >= $xx-$half_size && $res_x <= $xx+$SPRITE_W+$half_size) {
+                            #"top";
+                            $edge = 3;
+                        } else {
+                            #"bottom";
+                            $edge = 4;
                         }
+
+                        $p->{ttl} = 0 if ++$p->{bounces_count} >= 30;
+
+                        ($vx, $vy) = ($res_x-$half_size-$x, $res_y-$half_size-$y);
                     }
                 }
+            }
 
-                if ($intersects) {
-                    if ($edge == 1) {
-                        $p->{vel_x} = -abs($vel_x);
-                    } elsif ($edge == 2) {
-                        $p->{vel_x} = abs($vel_x);
-                    } elsif ($edge == 3) {
-                        $p->{vel_y} = -abs($vel_y);
-                    } else {
-                        $p->{vel_y} = abs($vel_y);
-                    }
-
-                    ($p->{x}, $p->{y}) = ($res->[0]-$half_size, $res->[1]-$half_size);
+            if ($intersects) {
+                if ($edge == 1) {
+                    $p->{vel_x} = -abs($vel_x);
+                } elsif ($edge == 2) {
+                    $p->{vel_x} = abs($vel_x);
+                } elsif ($edge == 3) {
+                    $p->{vel_y} = -abs($vel_y);
                 } else {
-                    ($p->{x}, $p->{y}) = ($newx, $newy);
+                    $p->{vel_y} = abs($vel_y);
                 }
+
+                ($p->{x}, $p->{y}) = ($res->[0]-$half_size, $res->[1]-$half_size);
+            } else {
+                ($p->{x}, $p->{y}) = ($newx, $newy);
             }
         }
     }
